@@ -1,0 +1,28 @@
+[package]
+name = "tfdiff"
+version = "1.0.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A beautiful console tool for displaying Terraform plan and apply diffs"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/yourusername/tfdiff"
+keywords = ["terraform", "diff", "console", "cli", "devops"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+regex = "1.10"
+colored = "2.1"
+unicode-width = "0.1"
+term_size = "0.3"
+atty = "0.2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "z"
+
+[[bin]]
+name = "tfdiff"
+path = "src/main.rs"

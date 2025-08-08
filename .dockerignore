@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+target/
+dist/
+*.tar.gz
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+LICENSE
+docs/
+
+# CI/CD
+.github/
+.travis.yml
+.gitlab-ci.yml
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Makefile
+Makefile
+
+# Temporary files
+*.tmp
+*.log
+
+# Coverage reports
+tarpaulin-report.html
+flamegraph.svg
+
+# Backup files
+*.bak
+*.orig

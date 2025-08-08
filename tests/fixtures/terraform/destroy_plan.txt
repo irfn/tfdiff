@@ -1,0 +1,155 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  - destroy
+
+Terraform will perform the following actions:
+
+  # aws_instance.legacy_server will be destroyed
+  # (because aws_instance.legacy_server is not in configuration)
+  - resource "aws_instance" "legacy_server" {
+      - ami                                  = "ami-0abcdef1234567890" -> null
+      - arn                                  = "arn:aws:ec2:us-west-2:123456789012:instance/i-0987654321fedcba0" -> null
+      - associate_public_ip_address          = true -> null
+      - availability_zone                    = "us-west-2a" -> null
+      - cpu_core_count                       = 1 -> null
+      - cpu_threads_per_core                 = 1 -> null
+      - disable_api_termination              = false -> null
+      - ebs_optimized                        = false -> null
+      - get_password_data                    = false -> null
+      - hibernation                          = false -> null
+      - id                                   = "i-0987654321fedcba0" -> null
+      - instance_initiated_shutdown_behavior = "stop" -> null
+      - instance_state                       = "running" -> null
+      - instance_type                        = "t2.micro" -> null
+      - ipv6_address_count                   = 0 -> null
+      - ipv6_addresses                       = [] -> null
+      - key_name                             = "legacy-key" -> null
+      - monitoring                           = false -> null
+      - placement_group                      = "" -> null
+      - placement_partition_number           = null -> null
+      - primary_network_interface_id         = "eni-09876543210abcdef" -> null
+      - private_dns_name                     = "ip-10-0-1-200.us-west-2.compute.internal" -> null
+      - private_ip                           = "10.0.1.200" -> null
+      - public_dns                           = "ec2-54-210-123-45.us-west-2.compute.amazonaws.com" -> null
+      - public_ip                            = "54.210.123.45" -> null
+      - secondary_private_ips                = [] -> null
+      - security_groups                      = [] -> null
+      - source_dest_check                    = true -> null
+      - subnet_id                            = "subnet-87654321" -> null
+      - tags                                 = {
+          - "Environment" = "legacy"
+          - "Name"        = "LegacyServer"
+          - "Scheduled"   = "for-removal"
+        } -> null
+      - tags_all                             = {
+          - "Environment" = "legacy"
+          - "Name"        = "LegacyServer"
+          - "Scheduled"   = "for-removal"
+        } -> null
+      - tenancy                              = "default" -> null
+      - user_data                            = null -> null
+      - user_data_base64                     = null -> null
+      - vpc_security_group_ids               = [
+          - "sg-0123456789abcdef0",
+        ] -> null
+
+      - capacity_reservation_specification {
+          - capacity_reservation_preference = "open" -> null
+        }
+
+      - credit_specification {
+          - cpu_credits = "standard" -> null
+        }
+
+      - enclave_options {
+          - enabled = false -> null
+        }
+
+      - maintenance_options {
+          - auto_recovery = "default" -> null
+        }
+
+      - metadata_options {
+          - http_endpoint               = "enabled" -> null
+          - http_put_response_hop_limit = 1 -> null
+          - http_tokens                 = "optional" -> null
+          - instance_metadata_tags      = "disabled" -> null
+        }
+
+      - private_dns_name_options {
+          - enable_resource_name_dns_a_record    = false -> null
+          - enable_resource_name_dns_aaaa_record = false -> null
+          - hostname_type                        = "ip-name" -> null
+        }
+
+      - root_block_device {
+          - delete_on_termination = true -> null
+          - device_name           = "/dev/sda1" -> null
+          - encrypted             = false -> null
+          - iops                  = 100 -> null
+          - tags                  = {} -> null
+          - throughput            = 0 -> null
+          - volume_id             = "vol-0123456789abcdef0" -> null
+          - volume_size           = 8 -> null
+          - volume_type           = "gp2" -> null
+        }
+    }
+
+  # aws_security_group.legacy_sg will be destroyed
+  # (because aws_security_group.legacy_sg is not in configuration)  
+  - resource "aws_security_group" "legacy_sg" {
+      - arn                    = "arn:aws:ec2:us-west-2:123456789012:security-group/sg-0123456789abcdef0" -> null
+      - description            = "Legacy security group" -> null
+      - egress                 = [
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - description      = ""
+              - from_port        = 0
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "-1"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 0
+            },
+        ] -> null
+      - id                     = "sg-0123456789abcdef0" -> null
+      - ingress                = [
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - description      = "SSH"
+              - from_port        = 22
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 22
+            },
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - description      = "HTTP"
+              - from_port        = 80
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 80
+            },
+        ] -> null
+      - name                   = "legacy-sg" -> null
+      - name_prefix            = null -> null
+      - owner_id               = "123456789012" -> null
+      - revoke_rules_on_delete = false -> null
+      - tags                   = {} -> null
+      - tags_all               = {} -> null
+      - vpc_id                 = "vpc-87654321" -> null
+    }
+
+Plan: 0 to add, 0 to change, 2 to destroy.

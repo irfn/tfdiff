@@ -1,0 +1,150 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # kubernetes_deployment.web_app will be created
+  + resource "kubernetes_deployment" "web_app" {
+      + id               = (known after apply)
+      + wait_for_rollout = true
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app" = "web-app"
+            }
+          + name             = "web-app"
+          + namespace        = "default"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + min_ready_seconds         = 0
+          + paused                    = false
+          + progress_deadline_seconds = 600
+          + replicas                  = 3
+          + revision_history_limit    = 10
+
+          + selector {
+              + match_labels = {
+                  + "app" = "web-app"
+                }
+            }
+
+          + strategy {
+              + type = (known after apply)
+
+              + rolling_update {
+                  + max_surge       = (known after apply)
+                  + max_unavailable = (known after apply)
+                }
+            }
+
+          + template {
+              + metadata {
+                  + generation       = (known after apply)
+                  + labels           = {
+                      + "app" = "web-app"
+                    }
+                  + name             = (known after apply)
+                  + resource_version = (known after apply)
+                  + uid              = (known after apply)
+                }
+
+              + spec {
+                  + active_deadline_seconds          = (known after apply)
+                  + automount_service_account_token  = (known after apply)
+                  + dns_policy                       = "ClusterFirst"
+                  + enable_service_links             = (known after apply)
+                  + host_ipc                         = false
+                  + host_network                     = false
+                  + host_pid                         = false
+                  + hostname                         = (known after apply)
+                  + node_name                        = (known after apply)
+                  + restart_policy                   = "Always"
+                  + service_account_name             = (known after apply)
+                  + share_process_namespace          = false
+                  + termination_grace_period_seconds = 30
+
+                  + container {
+                      + args                     = (known after apply)
+                      + command                  = (known after apply)
+                      + image                    = "nginx:1.21"
+                      + image_pull_policy        = (known after apply)
+                      + name                     = "web-app"
+                      + stdin                    = false
+                      + stdin_once               = false
+                      + termination_message_path = "/dev/termination-log"
+                      + tty                      = false
+                      + working_dir              = (known after apply)
+
+                      + port {
+                          + container_port = 80
+                          + host_ip        = (known after apply)
+                          + host_port      = (known after apply)
+                          + name           = "http"
+                          + protocol       = "TCP"
+                        }
+
+                      + resources {
+                          + limits   = {
+                              + "cpu"    = "500m"
+                              + "memory" = "512Mi"
+                            }
+                          + requests = {
+                              + "cpu"    = "200m" 
+                              + "memory" = "256Mi"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+  # kubernetes_service.web_app will be updated in-place  
+  ~ resource "kubernetes_service" "web_app" {
+        id                     = "default/web-app"
+        status                 = [
+            {
+                load_balancer = [
+                    {
+                        ingress = []
+                    },
+                ]
+            },
+        ]
+
+        metadata {
+            labels           = {
+                "app" = "web-app"
+            }
+            name             = "web-app"
+            namespace        = "default"
+            resource_version = "12345"
+            uid              = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        }
+
+        spec {
+          ~ ports = [
+              ~ {
+                    name        = "http"
+                    port        = 80
+                  ~ target_port = "80" -> "http"
+                } -> {
+                    name        = "http"
+                    port        = 80
+                    target_port = "http"
+                },
+            ]
+            selector         = {
+                "app" = "web-app"
+            }
+            session_affinity = "None"
+            type             = "ClusterIP"
+        }
+    }
+
+Plan: 1 to add, 1 to change, 0 to destroy.

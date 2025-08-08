@@ -1,0 +1,125 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+  - destroy
+
+Terraform will perform the following actions:
+
+  # aws_instance.web_server will be updated in-place
+  ~ resource "aws_instance" "web_server" {
+      ~ ami                          = "ami-0c55b159cbfafe1f0" -> "ami-0d70546e43a941d70"
+        arn                          = "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"
+        associate_public_ip_address  = true
+        availability_zone            = "us-east-1a"
+        cpu_core_count               = 1
+        cpu_threads_per_core         = 1
+        disable_api_termination      = false
+        ebs_optimized                = false
+        get_password_data            = false
+        hibernation                  = false
+        id                           = "i-1234567890abcdef0"
+      ~ instance_type                = "t2.micro" -> "t3.small"
+        ipv6_address_count           = 0
+        ipv6_addresses               = []
+        key_name                     = "my-key-pair"
+        monitoring                   = false
+        placement_group              = ""
+        placement_partition_number   = null
+        primary_network_interface_id = "eni-12345678901234567"
+        private_dns                  = "ip-10-0-1-100.ec2.internal"
+        private_ip                   = "10.0.1.100"
+        public_dns                   = "ec2-54-123-45-67.compute-1.amazonaws.com"
+        public_ip                    = "54.123.45.67"
+        secondary_private_ips        = []
+        security_groups              = []
+        source_dest_check            = true
+        subnet_id                    = "subnet-12345678"
+      ~ tags                         = {
+          ~ "Environment" = "staging" -> "production"
+            "Name"        = "WebServer"
+          + "Version"     = "2.0"
+        }
+      ~ tags_all                     = {
+          ~ "Environment" = "staging" -> "production"
+            "Name"        = "WebServer"
+          + "Version"     = "2.0"
+        }
+        tenancy                      = "default"
+      ~ user_data                    = "c765373c563b260626d113c4a56a46e8a8248872" -> "a123b456c789d012e345f678g901h234i567j890" # forces replacement
+      ~ vpc_security_group_ids       = [
+          + "sg-fedcba21",
+            "sg-abcdef12",
+        ]
+
+        credit_specification {
+            cpu_credits = "standard"
+        }
+
+        enclave_options {
+            enabled = false
+        }
+
+        metadata_options {
+            http_endpoint               = "enabled"
+            http_put_response_hop_limit = 1
+            http_tokens                 = "optional"
+            instance_metadata_tags      = "disabled"
+        }
+
+        root_block_device {
+            delete_on_termination = true
+            device_name           = "/dev/sda1"
+            encrypted             = false
+            iops                  = 100
+            tags                  = {}
+            throughput            = 0
+            volume_id             = "vol-049df61146c4d7901"
+            volume_size           = 8
+            volume_type           = "gp2"
+        }
+    }
+
+  # aws_security_group.additional will be created
+  + resource "aws_security_group" "additional" {
+      + arn                    = (known after apply)
+      + description            = "Additional security group for web server"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + description      = ""
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "10.0.0.0/8",
+                ]
+              + description      = "Internal traffic"
+              + from_port        = 80
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 80
+            },
+        ]
+      + name                   = "additional-sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags_all               = (known after apply)
+      + vpc_id                 = "vpc-12345678"
+    }
+
+Plan: 1 to add, 1 to change, 0 to destroy.

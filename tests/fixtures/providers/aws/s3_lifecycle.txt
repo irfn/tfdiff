@@ -1,0 +1,75 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_s3_bucket.documents will be updated in-place
+  ~ resource "aws_s3_bucket" "documents" {
+        arn                         = "arn:aws:s3:::company-documents-bucket"
+        bucket                      = "company-documents-bucket"
+        id                          = "company-documents-bucket"
+        tags                        = {}
+        tags_all                    = {}
+
+      + lifecycle_rule {
+          + abort_incomplete_multipart_upload_days = 7
+          + enabled                                = true
+          + id                                     = "document_lifecycle"
+          + prefix                                 = "documents/"
+
+          + expiration {
+              + days = 2555
+            }
+
+          + noncurrent_version_expiration {
+              + days = 90
+            }
+
+          + noncurrent_version_transition {
+              + days          = 30
+              + storage_class = "STANDARD_IA"
+            }
+
+          + noncurrent_version_transition {
+              + days          = 60
+              + storage_class = "GLACIER"
+            }
+
+          + transition {
+              + days          = 30
+              + storage_class = "STANDARD_IA"
+            }
+
+          + transition {
+              + days          = 90
+              + storage_class = "GLACIER"
+            }
+
+          + transition {
+              + days          = 365
+              + storage_class = "DEEP_ARCHIVE"
+            }
+        }
+
+      + versioning {
+          + enabled    = true
+          + mfa_delete = false
+        }
+    }
+
+  # aws_s3_bucket_server_side_encryption_configuration.documents will be created
+  + resource "aws_s3_bucket_server_side_encryption_configuration" "documents" {
+      + bucket = "company-documents-bucket"
+      + id     = (known after apply)
+
+      + rule {
+          + apply_server_side_encryption_by_default {
+              + kms_master_key_id = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+              + sse_algorithm     = "aws:kms"
+            }
+
+          + bucket_key_enabled = true
+        }
+    }
+
+Plan: 1 to add, 1 to change, 0 to destroy.

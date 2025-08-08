@@ -1,0 +1,14 @@
+aws_s3_bucket.app_bucket: Creating...
+aws_s3_bucket.app_bucket: Creation complete after 2s [id=my-app-bucket-prod-2024]
+aws_iam_role.lambda_role: Creating...
+aws_iam_role.lambda_role: Creation complete after 1s [id=lambda-execution-role]
+aws_lambda_function.processor: Creating...
+aws_lambda_function.processor: Still creating... [10s elapsed]
+aws_lambda_function.processor: Creation complete after 15s [id=data-processor]
+
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+bucket_arn = "arn:aws:s3:::my-app-bucket-prod-2024"
+lambda_function_name = "data-processor"

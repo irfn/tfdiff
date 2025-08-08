@@ -1,0 +1,30 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create
+  [33m~[0m update in-place
+  [31m-[0m destroy
+
+Terraform will perform the following actions:
+
+  [1m# aws_s3_bucket.test will be created[0m[0m
+  [0m[32m+[0m[0m resource "aws_s3_bucket" "test" {
+      [32m+[0m[0m arn                         = (known after apply)
+      [32m+[0m[0m bucket                      = "test-bucket-with-ansi"
+      [32m+[0m[0m id                          = (known after apply)
+      [32m+[0m[0m tags                        = {
+          [32m+[0m[0m "Environment" = "[32mproduction[0m"
+          [32m+[0m[0m "Name"        = "[1mTestBucket[0m"
+        }
+    }
+
+⠋ Initializing the backend...
+⠙ Initializing provider plugins...
+⠹ Finding latest version of hashicorp/aws...
+⠸ Installing hashicorp/aws v5.20.1...
+⠼ Installed hashicorp/aws v5.20.1 (signed by HashiCorp)
+⠴ Terraform has created a lock file .terraform.lock.hcl
+⠦ Terraform has been successfully initialized!
+⠧ 
+⠇ You may now begin working with Terraform.
+⠏ 
+
+[1m[32mPlan: 1 to add, 0 to change, 0 to destroy.[0m

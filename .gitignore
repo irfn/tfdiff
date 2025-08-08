@@ -1,0 +1,56 @@
+# Rust
+target/
+Cargo.lock
+
+# Build artifacts
+/dist/
+*.tar.gz
+*.zip
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*.orig
+
+# Coverage reports
+/target/coverage/
+tarpaulin-report.html
+tarpaulin-report.xml
+
+# Flamegraph profiling
+flamegraph.svg
+perf.data
+
+# Documentation build
+/target/doc/
+
+# Test artifacts
+/tests/fixtures/generated/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.backup
+
+# Lock files (keep Cargo.lock for applications)
+# Cargo.lock
+
+# Generated files
+*.generated.*

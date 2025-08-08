@@ -1,0 +1,92 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_instance.web[0] will be created
+  + resource "aws_instance" "web" {
+      + ami                     = "ami-12345678"
+      + instance_type           = "t3.micro"
+      + key_name                = "my-key"
+      + subnet_id               = "subnet-12345"
+      + tags                    = {
+          + "Name" = "web-0"
+        }
+    }
+
+  # aws_instance.web[1] will be created
+  + resource "aws_instance" "web" {
+      + ami                     = "ami-12345678"
+      + instance_type           = "t3.micro"
+      + key_name                = "my-key"
+      + subnet_id               = "subnet-12345"
+      + tags                    = {
+          + "Name" = "web-1"
+        }
+    }
+
+  # aws_instance.web[2] will be created
+  + resource "aws_instance" "web" {
+      + ami                     = "ami-12345678"
+      + instance_type           = "t3.micro"
+      + key_name                = "my-key"
+      + subnet_id               = "subnet-12345"
+      + tags                    = {
+          + "Name" = "web-2"
+        }
+    }
+
+  # aws_instance.web[3] will be created
+  + resource "aws_instance" "web" {
+      + ami                     = "ami-12345678"
+      + instance_type           = "t3.micro"
+      + key_name                = "my-key"
+      + subnet_id               = "subnet-12345"
+      + tags                    = {
+          + "Name" = "web-3"
+        }
+    }
+
+  # aws_instance.web[4] will be created
+  + resource "aws_instance" "web" {
+      + ami                     = "ami-12345678"
+      + instance_type           = "t3.micro"
+      + key_name                = "my-key"
+      + subnet_id               = "subnet-12345"
+      + tags                    = {
+          + "Name" = "web-4"
+        }
+    }
+
+  # aws_s3_bucket.data[0] will be created
+  + resource "aws_s3_bucket" "data" {
+      + bucket = "data-bucket-0"
+      + id     = (known after apply)
+    }
+
+  # aws_s3_bucket.data[1] will be created
+  + resource "aws_s3_bucket" "data" {
+      + bucket = "data-bucket-1"
+      + id     = (known after apply)
+    }
+
+  # aws_s3_bucket.data[2] will be created
+  + resource "aws_s3_bucket" "data" {
+      + bucket = "data-bucket-2"
+      + id     = (known after apply)
+    }
+
+  # aws_s3_bucket.data[3] will be created
+  + resource "aws_s3_bucket" "data" {
+      + bucket = "data-bucket-3"
+      + id     = (known after apply)
+    }
+
+  # aws_s3_bucket.data[4] will be created
+  + resource "aws_s3_bucket" "data" {
+      + bucket = "data-bucket-4"
+      + id     = (known after apply)
+    }
+
+Plan: 10 to add, 0 to change, 0 to destroy.

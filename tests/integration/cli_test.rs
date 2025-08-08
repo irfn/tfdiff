@@ -225,4 +225,37 @@ Plan: 1 to add, 0 to change, 0 to destroy.
             .assert()
             .success();
     }
+    
+    #[test]
+    fn test_cli_browser_mode() {
+        let plan_content = r#"
+Terraform used the selected providers to generate the following execution plan.
+
+# aws_s3_bucket.test will be created
++ resource "aws_s3_bucket" "test" {
+    + bucket = "test-bucket"
+    + id     = (known after apply)
+  }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+        "#;
+        let file = create_temp_file_with_content(plan_content);
+        
+        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        cmd.arg(file.path())
+            .arg("--browser")
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("🌐 Opened Terraform diff in browser"));
+    }
+    
+    #[test]
+    fn test_cli_browser_flag_available() {
+        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        cmd.arg("--help")
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("--browser"))
+            .stdout(predicate::str::contains("Generate HTML and open in browser"));
+    }
 }

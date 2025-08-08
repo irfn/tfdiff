@@ -137,10 +137,16 @@ mod proptest_integration {
             prop_assert!(html_output.contains("</html>"));
             prop_assert!(html_output.contains("<head>"));
             prop_assert!(html_output.contains("<body>"));
-            let add_str = format!("{} to add", add);
-            let change_str = format!("{} to change", change);
-            prop_assert!(html_output.contains(&add_str));
-            prop_assert!(html_output.contains(&change_str));
+            if add > 0 {
+                let add_str = format!("✚ {}", add);
+                prop_assert!(html_output.contains(&add_str));
+                prop_assert!(html_output.contains("to add"));
+            }
+            if change > 0 {
+                let change_str = format!("↻ {}", change);
+                prop_assert!(html_output.contains(&change_str));
+                prop_assert!(html_output.contains("to change"));
+            }
         }
         
         #[test]

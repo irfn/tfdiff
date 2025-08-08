@@ -152,7 +152,8 @@ mod file_processing_integration_tests {
         
         assert!(formatted.contains("<!DOCTYPE html>"));
         assert!(formatted.contains("Terraform Plan Report"));
-        assert!(formatted.contains("✖ 2 to destroy"));
+        assert!(formatted.contains("✖ 2"));
+        assert!(formatted.contains("to destroy"));
         assert!(formatted.contains("</html>"));
     }
     

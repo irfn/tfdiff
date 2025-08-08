@@ -1,7 +1,8 @@
 use clap::Parser;
 use std::path::PathBuf;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::fs;
+use std::process::Command;
 use tfdiff::{parse_terraform_output, Result, TfdiffError};
 use tfdiff::formatter::{format_terminal_output, format_json_output, format_html_output, format_markdown_output};
 
@@ -44,6 +45,10 @@ struct Cli {
     /// Show summary only
     #[arg(short, long)]
     summary: bool,
+
+    /// Generate HTML and open in browser
+    #[arg(short, long)]
+    browser: bool,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -52,6 +57,52 @@ enum OutputFormat {
     Json,
     Html,
     Markdown,
+}
+
+fn open_in_browser(plan: &tfdiff::TerraformPlan) -> Result<()> {
+    // Generate HTML content
+    let html_content = format_html_output(plan);
+    
+    // Create temporary file
+    let temp_dir = std::env::temp_dir();
+    let temp_file_path = temp_dir.join(format!("tfdiff_{}.html", 
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()));
+    
+    // Write HTML to temporary file
+    let mut temp_file = fs::File::create(&temp_file_path)
+        .map_err(TfdiffError::IoError)?;
+    temp_file.write_all(html_content.as_bytes())
+        .map_err(TfdiffError::IoError)?;
+    
+    // Open in browser based on operating system
+    let result = if cfg!(target_os = "macos") {
+        Command::new("open").arg(&temp_file_path).status()
+    } else if cfg!(target_os = "windows") {
+        Command::new("cmd").args(["/C", "start", temp_file_path.to_str().unwrap()]).status()
+    } else {
+        // Linux and other Unix systems
+        Command::new("xdg-open").arg(&temp_file_path).status()
+    };
+    
+    match result {
+        Ok(status) if status.success() => {
+            println!("🌐 Opened Terraform diff in browser: {}", temp_file_path.display());
+            Ok(())
+        }
+        Ok(_) => {
+            eprintln!("❌ Failed to open browser");
+            eprintln!("📄 HTML file saved to: {}", temp_file_path.display());
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("❌ Error opening browser: {}", e);
+            eprintln!("📄 HTML file saved to: {}", temp_file_path.display());
+            Ok(())
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -100,6 +151,11 @@ fn main() -> Result<()> {
         OutputFormat::Html => format_html_output(&filtered_plan),
         OutputFormat::Markdown => format_markdown_output(&filtered_plan),
     };
+    
+    // Handle browser mode
+    if cli.browser {
+        return open_in_browser(&filtered_plan);
+    }
     
     // Print output
     if cli.summary {

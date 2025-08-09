@@ -52,8 +52,8 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         cmd.arg(file.path())
             .assert()
             .success()
-            .stdout(predicate::str::contains("TERRAFORM PLAN DIFF"))
-            .stdout(predicate::str::contains("✚ 1 to add"));
+            .stdout(predicate::str::contains("TERRAFORM PLAN ANALYSIS"))
+            .stdout(predicate::str::contains("1 resources to add"));
     }
     
     #[test]
@@ -83,7 +83,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
             .assert()
             .success()
             .stdout(predicate::str::contains("<!DOCTYPE html>"))
-            .stdout(predicate::str::contains("<title>Terraform Diff Report</title>"));
+            .stdout(predicate::str::contains("<title>Terraform Plan - Infrastructure</title>"));
     }
     
     #[test]
@@ -191,7 +191,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         cmd.write_stdin("Plan: 0 to add, 0 to change, 0 to destroy.")
             .assert()
             .success()
-            .stdout(predicate::str::contains("TERRAFORM PLAN DIFF"));
+            .stdout(predicate::str::contains("TERRAFORM PLAN ANALYSIS"));
     }
     
     #[test]

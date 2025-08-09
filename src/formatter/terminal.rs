@@ -1,39 +1,114 @@
-use crate::{TerraformPlan, ActionType};
+use crate::{TerraformPlan, ActionType, Change};
 use colored::*;
+use std::collections::HashMap;
+use serde_json::Value;
 
 pub fn format_terminal_output(plan: &TerraformPlan) -> String {
     let mut output = String::new();
     
-    // Header
-    output.push_str(&"═".repeat(70).bright_blue().to_string());
-    output.push('\n');
-    output.push_str(&format!("                    {} TERRAFORM {} DIFF                    ", 
-        "▶".bright_blue(), 
-        match plan.mode {
-            crate::PlanMode::Plan => "PLAN".bright_green(),
-            crate::PlanMode::Apply => "APPLY".bright_yellow(),
-        }
-    ));
-    output.push('\n');
-    output.push_str(&"═".repeat(70).bright_blue().to_string());
+    // Header with improved styling
+    output.push_str(&"╔".bright_blue().to_string());
+    output.push_str(&"═".repeat(78).bright_blue().to_string());
+    output.push_str(&"╗".bright_blue().to_string());
     output.push('\n');
     
-    // Summary box
+    let mode_text = match plan.mode {
+        crate::PlanMode::Plan => "TERRAFORM PLAN ANALYSIS".bright_cyan(),
+        crate::PlanMode::Apply => "TERRAFORM APPLY ANALYSIS".bright_yellow(),
+    };
+    output.push_str(&format!("║{:^78}║\n", mode_text));
+    
+    output.push_str(&"╚".bright_blue().to_string());
+    output.push_str(&"═".repeat(78).bright_blue().to_string());
+    output.push_str(&"╝".bright_blue().to_string());
+    output.push('\n');
+    output.push('\n');
+    
+    // Enhanced Summary Section
     if plan.summary.add > 0 || plan.summary.change > 0 || plan.summary.destroy > 0 || plan.summary.read > 0 {
-        output.push_str("\n                    ┌────────────────────────────────┐\n");
-        output.push_str(&format!("                    │ {} │\n", 
-            format_summary_line(&plan.summary)
-        ));
-        output.push_str("                    └────────────────────────────────┘\n");
+        output.push_str(&"📊 ".to_string());
+        output.push_str(&"PLAN SUMMARY".bright_white().bold().to_string());
+        output.push('\n');
+        output.push_str(&"─".repeat(80).dimmed().to_string());
+        output.push('\n');
+        output.push('\n');
+        
+        // Summary stats in a grid layout
+        if plan.summary.add > 0 {
+            output.push_str(&format!("  {} {} resources to add\n", 
+                "➕".bright_green(),
+                plan.summary.add.to_string().bright_green().bold()
+            ));
+        }
+        if plan.summary.change > 0 {
+            output.push_str(&format!("  {} {} resources to change\n", 
+                "🔄".bright_yellow(),
+                plan.summary.change.to_string().bright_yellow().bold()
+            ));
+        }
+        if plan.summary.destroy > 0 {
+            output.push_str(&format!("  {} {} resources to destroy\n", 
+                "🗑️".bright_red(),
+                plan.summary.destroy.to_string().bright_red().bold()
+            ));
+        }
+        if plan.summary.read > 0 {
+            output.push_str(&format!("  {} {} data sources to read\n", 
+                "📖".bright_cyan(),
+                plan.summary.read.to_string().bright_cyan().bold()
+            ));
+        }
+        output.push('\n');
+        output.push_str(&"═".repeat(80).bright_blue().to_string());
+        output.push('\n');
+        output.push('\n');
     }
     
-    output.push('\n');
-    output.push_str(&"═".repeat(70).bright_blue().to_string());
-    output.push('\n');
+    // Resources with enhanced formatting
+    if !plan.resources.is_empty() {
+        output.push_str(&"🔧 ".to_string());
+        output.push_str(&"RESOURCES".bright_white().bold().to_string());
+        output.push('\n');
+        output.push_str(&"─".repeat(80).dimmed().to_string());
+        output.push('\n');
+        output.push('\n');
+        
+        for resource in &plan.resources {
+            output.push_str(&format_resource(resource));
+            output.push('\n');
+        }
+    }
     
-    // Resources
-    for resource in &plan.resources {
-        output.push_str(&format_resource(resource));
+    // Data sources section
+    if !plan.data_sources.is_empty() {
+        output.push_str(&"📊 ".to_string());
+        output.push_str(&"DATA SOURCES".bright_white().bold().to_string());
+        output.push('\n');
+        output.push_str(&"─".repeat(80).dimmed().to_string());
+        output.push('\n');
+        output.push('\n');
+        
+        for data_source in &plan.data_sources {
+            output.push_str(&format_data_source(data_source));
+            output.push('\n');
+        }
+    }
+    
+    // Warnings section
+    if !plan.warnings.is_empty() {
+        output.push_str(&"⚠️  ".to_string());
+        output.push_str(&"WARNINGS".bright_yellow().bold().to_string());
+        output.push('\n');
+        output.push_str(&"─".repeat(80).dimmed().to_string());
+        output.push('\n');
+        output.push('\n');
+        
+        for warning in &plan.warnings {
+            output.push_str(&format!("  {} {}\n", 
+                "•".bright_yellow(),
+                warning.message.bright_yellow()
+            ));
+        }
         output.push('\n');
     }
     
@@ -62,36 +137,203 @@ pub fn format_summary_line(summary: &crate::Summary) -> String {
 pub fn format_resource(resource: &crate::Resource) -> String {
     let mut output = String::new();
     
-    let (symbol, color, action_text) = match resource.action {
-        ActionType::Create => ("✚", "bright_green", "CREATE"),
-        ActionType::Update => ("↻", "bright_yellow", "UPDATE"), 
-        ActionType::Destroy => ("✖", "bright_red", "DESTROY"),
-        ActionType::Read => ("⇐", "bright_cyan", "READ"),
-        ActionType::NoOp => ("○", "bright_white", "NO-OP"),
+    // Resource header with action badge
+    let action_badge = match resource.action {
+        ActionType::Create => format!(" {} ", "CREATE").on_bright_green().black().bold(),
+        ActionType::Update => format!(" {} ", "UPDATE").on_bright_yellow().black().bold(),
+        ActionType::Destroy => format!(" {} ", "DESTROY").on_bright_red().white().bold(),
+        ActionType::Read => format!(" {} ", "READ").on_bright_cyan().black().bold(),
+        ActionType::NoOp => format!(" {} ", "NO-OP").on_bright_black().white().bold(),
     };
     
-    // Resource header
-    let header = format!("{} {} {}", symbol, action_text, resource.id);
-    output.push_str(&match color {
-        "bright_green" => header.bright_green().to_string(),
-        "bright_yellow" => header.bright_yellow().to_string(),
-        "bright_red" => header.bright_red().to_string(),
-        "bright_cyan" => header.bright_cyan().to_string(),
-        _ => header.bright_white().to_string(),
-    });
-    output.push('\n');
+    output.push_str(&format!("{} {}\n", action_badge, resource.id.bright_white().bold()));
     
-    // Separator line
-    output.push_str(&"─".repeat(70).dimmed().to_string());
-    output.push('\n');
-    
-    // TODO: Add attribute formatting
-    for (key, value) in &resource.attributes {
-        output.push_str(&format!("  {} = {}\n", 
-            key.bright_white(),
-            format!("{}", value).dimmed()
+    // Show resource type and provider if available
+    if !resource.type_name.is_empty() {
+        output.push_str(&format!("  {} {}\n", 
+            "Type:".dimmed(),
+            resource.type_name.bright_blue()
         ));
     }
+    
+    // If there are changes, show them in a diff-like format
+    if !resource.changes.is_empty() {
+        output.push('\n');
+        output.push_str(&format_changes(&resource.changes, &resource.action));
+    }
+    
+    // Show attributes if no changes are present (for backwards compatibility)
+    if resource.changes.is_empty() && !resource.attributes.is_empty() {
+        output.push('\n');
+        for (key, value) in &resource.attributes {
+            let formatted_value = format_json_value(value, 1);
+            output.push_str(&format!("  {} = {}\n", 
+                key.bright_cyan(),
+                formatted_value
+            ));
+        }
+    }
+    
+    output.push_str(&"─".repeat(80).dimmed().to_string());
+    output.push('\n');
+    
+    output
+}
+
+fn format_changes(changes: &[Change], _action: &ActionType) -> String {
+    let mut output = String::new();
+    
+    // Group changes by their path for better organization
+    let mut grouped_changes: HashMap<String, Vec<&Change>> = HashMap::new();
+    for change in changes {
+        let path_key = if change.path.is_empty() {
+            "root".to_string()
+        } else {
+            change.path[0].clone()
+        };
+        grouped_changes.entry(path_key).or_insert_with(Vec::new).push(change);
+    }
+    
+    for change in changes {
+        let path_str = if change.path.is_empty() {
+            "(root)".to_string()
+        } else {
+            change.path.join(".")
+        };
+        
+        // Handle different change scenarios
+        match (&change.before, &change.after) {
+            (None, Some(after)) => {
+                // Creation
+                output.push_str(&format!("  {} {} = {}\n",
+                    "+".bright_green().bold(),
+                    path_str.bright_cyan(),
+                    format_json_value(after, 2).bright_green()
+                ));
+            },
+            (Some(before), None) => {
+                // Deletion
+                output.push_str(&format!("  {} {} = {}\n",
+                    "-".bright_red().bold(),
+                    path_str.bright_cyan(),
+                    format_json_value(before, 2).bright_red()
+                ));
+            },
+            (Some(before), Some(after)) if before != after => {
+                // Modification - show side by side
+                output.push_str(&format!("  {} {}:\n", 
+                    "~".bright_yellow().bold(),
+                    path_str.bright_cyan()
+                ));
+                output.push_str(&format!("    {} {}\n",
+                    "Before:".dimmed(),
+                    format_json_value(before, 3).bright_red()
+                ));
+                output.push_str(&format!("    {} {}\n",
+                    "After: ".dimmed(),
+                    format_json_value(after, 3).bright_green()
+                ));
+            },
+            _ => {
+                // No change or computed values
+                if change.computed {
+                    output.push_str(&format!("  {} {} = {}\n",
+                        "?".bright_blue().bold(),
+                        path_str.bright_cyan(),
+                        "(known after apply)".italic().dimmed()
+                    ));
+                }
+            }
+        }
+        
+        if change.sensitive {
+            output.push_str(&format!("    {} {}\n",
+                "🔒".to_string(),
+                "(sensitive value)".italic().dimmed()
+            ));
+        }
+    }
+    
+    output
+}
+
+fn format_json_value(value: &Value, indent_level: usize) -> String {
+    let indent = "  ".repeat(indent_level);
+    
+    match value {
+        Value::Null => "null".dimmed().to_string(),
+        Value::Bool(b) => b.to_string().bright_magenta().to_string(),
+        Value::Number(n) => n.to_string().bright_blue().to_string(),
+        Value::String(s) => format!("\"{}\"", s).bright_green().to_string(),
+        Value::Array(arr) => {
+            if arr.is_empty() {
+                "[]".to_string()
+            } else if arr.len() == 1 {
+                format!("[{}]", format_json_value(&arr[0], 0))
+            } else {
+                let mut result = "[\n".to_string();
+                for (i, item) in arr.iter().enumerate() {
+                    result.push_str(&format!("{}  {}",
+                        indent,
+                        format_json_value(item, indent_level + 1)
+                    ));
+                    if i < arr.len() - 1 {
+                        result.push(',');
+                    }
+                    result.push('\n');
+                }
+                result.push_str(&format!("{}]", indent));
+                result
+            }
+        },
+        Value::Object(obj) => {
+            if obj.is_empty() {
+                "{}".to_string()
+            } else {
+                let mut result = "{\n".to_string();
+                let entries: Vec<_> = obj.iter().collect();
+                for (i, (key, val)) in entries.iter().enumerate() {
+                    result.push_str(&format!("{}  {} = {}",
+                        indent,
+                        key.bright_cyan(),
+                        format_json_value(val, indent_level + 1)
+                    ));
+                    if i < entries.len() - 1 {
+                        result.push(',');
+                    }
+                    result.push('\n');
+                }
+                result.push_str(&format!("{}}}", indent));
+                result
+            }
+        }
+    }
+}
+
+fn format_data_source(data_source: &crate::DataSource) -> String {
+    let mut output = String::new();
+    
+    let action_badge = format!(" {} ", "READ").on_bright_cyan().black().bold();
+    output.push_str(&format!("{} {}\n", action_badge, data_source.id.bright_white().bold()));
+    
+    if !data_source.type_name.is_empty() {
+        output.push_str(&format!("  {} {}\n", 
+            "Type:".dimmed(),
+            data_source.type_name.bright_blue()
+        ));
+    }
+    
+    output.push('\n');
+    for (key, value) in &data_source.attributes {
+        let formatted_value = format_json_value(value, 1);
+        output.push_str(&format!("  {} = {}\n", 
+            key.bright_cyan(),
+            formatted_value
+        ));
+    }
+    
+    output.push_str(&"─".repeat(80).dimmed().to_string());
+    output.push('\n');
     
     output
 }

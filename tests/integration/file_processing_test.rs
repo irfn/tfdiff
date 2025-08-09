@@ -125,8 +125,8 @@ mod file_processing_integration_tests {
         let parsed = parse_terraform_output(&content).unwrap();
         let formatted = format_terminal_output(&parsed);
         
-        assert!(clean_ansi_codes(&formatted).contains("TERRAFORM PLAN DIFF"));
-        assert!(clean_ansi_codes(&formatted).contains("✚ 1 to add"));
+        assert!(clean_ansi_codes(&formatted).contains("TERRAFORM PLAN ANALYSIS"));
+        assert!(clean_ansi_codes(&formatted).contains("1 resources to add"));
         assert!(!clean_ansi_codes(&formatted).contains("to change"));
         assert!(!clean_ansi_codes(&formatted).contains("to destroy"));
     }
@@ -151,8 +151,8 @@ mod file_processing_integration_tests {
         let formatted = format_html_output(&parsed);
         
         assert!(formatted.contains("<!DOCTYPE html>"));
-        assert!(formatted.contains("Terraform Plan Report"));
-        assert!(formatted.contains("✖ 2"));
+        assert!(formatted.contains("Terraform Plan Analysis"));
+        assert!(formatted.contains(">2<"));
         assert!(formatted.contains("to destroy"));
         assert!(formatted.contains("</html>"));
     }

@@ -12,9 +12,9 @@ mod terminal_formatter_tests {
         let plan = sample_terraform_plan();
         let output = format_terminal_output(&plan);
         
-        assert!(clean_ansi_codes(&output).contains("TERRAFORM PLAN DIFF"));
-        assert!(clean_ansi_codes(&output).contains("✚ 2 to add"));
-        assert!(clean_ansi_codes(&output).contains("↻ 1 to change"));
+        assert!(clean_ansi_codes(&output).contains("TERRAFORM PLAN ANALYSIS"));
+        assert!(clean_ansi_codes(&output).contains("2 resources to add"));
+        assert!(clean_ansi_codes(&output).contains("1 resources to change"));
         assert!(clean_ansi_codes(&output).contains("aws_s3_bucket.test"));
         assert!(clean_ansi_codes(&output).contains("aws_instance.web"));
     }
@@ -25,7 +25,7 @@ mod terminal_formatter_tests {
         plan.mode = PlanMode::Apply;
         
         let output = format_terminal_output(&plan);
-        assert!(clean_ansi_codes(&output).contains("TERRAFORM APPLY DIFF"));
+        assert!(clean_ansi_codes(&output).contains("TERRAFORM APPLY ANALYSIS"));
     }
     
     #[test]
@@ -40,7 +40,7 @@ mod terminal_formatter_tests {
         };
         
         let output = format_terminal_output(&plan);
-        assert!(clean_ansi_codes(&output).contains("TERRAFORM PLAN DIFF"));
+        assert!(clean_ansi_codes(&output).contains("TERRAFORM PLAN ANALYSIS"));
         // Should not contain summary box when all counts are 0
         assert!(!output.contains("┌────────────────────────────────┐"));
     }
@@ -65,10 +65,10 @@ mod terminal_formatter_tests {
         };
         
         let output = format_terminal_output(&plan);
-        assert!(clean_ansi_codes(&output).contains("✚ 1 to add"));
-        assert!(clean_ansi_codes(&output).contains("✖ 2 to destroy"));
-        assert!(clean_ansi_codes(&output).contains("✚ CREATE"));
-        assert!(clean_ansi_codes(&output).contains("✖ DESTROY"));
+        assert!(clean_ansi_codes(&output).contains("1 resources to add"));
+        assert!(clean_ansi_codes(&output).contains("2 resources to destroy"));
+        assert!(clean_ansi_codes(&output).contains("CREATE"));
+        assert!(clean_ansi_codes(&output).contains("DESTROY"));
     }
     
     #[test]
@@ -88,7 +88,7 @@ mod terminal_formatter_tests {
         };
         
         let output = format_terminal_output(&plan);
-        assert!(clean_ansi_codes(&output).contains("⇐ 3 to read"));
+        assert!(clean_ansi_codes(&output).contains("3 data sources to read"));
     }
     
     #[test]
@@ -96,7 +96,7 @@ mod terminal_formatter_tests {
         let resource = sample_create_resource();
         let formatted = format_resource(&resource);
         
-        assert!(clean_ansi_codes(&formatted).contains("✚ CREATE"));
+        assert!(clean_ansi_codes(&formatted).contains("CREATE"));
         assert!(clean_ansi_codes(&formatted).contains("aws_s3_bucket.test"));
         assert!(clean_ansi_codes(&formatted).contains("bucket = \"test-bucket\""));
         assert!(clean_ansi_codes(&formatted).contains("force_destroy = false"));
@@ -107,9 +107,11 @@ mod terminal_formatter_tests {
         let resource = sample_update_resource();
         let formatted = format_resource(&resource);
         
-        assert!(clean_ansi_codes(&formatted).contains("↻ UPDATE"));
+        assert!(clean_ansi_codes(&formatted).contains("UPDATE"));
         assert!(clean_ansi_codes(&formatted).contains("aws_instance.web"));
-        assert!(clean_ansi_codes(&formatted).contains("instance_type = \"t3.small\""));
+        // The new format shows changes in diff format
+        assert!(clean_ansi_codes(&formatted).contains("instance_type"));
+        assert!(clean_ansi_codes(&formatted).contains("t3.small"));
     }
     
     #[test]
@@ -117,7 +119,7 @@ mod terminal_formatter_tests {
         let resource = sample_destroy_resource();
         let formatted = format_resource(&resource);
         
-        assert!(clean_ansi_codes(&formatted).contains("✖ DESTROY"));
+        assert!(clean_ansi_codes(&formatted).contains("DESTROY"));
         assert!(clean_ansi_codes(&formatted).contains("aws_instance.legacy"));
     }
     
@@ -127,7 +129,7 @@ mod terminal_formatter_tests {
         resource.action = ActionType::NoOp;
         
         let formatted = format_resource(&resource);
-        assert!(clean_ansi_codes(&formatted).contains("○ NO-OP"));
+        assert!(clean_ansi_codes(&formatted).contains("NO-OP"));
     }
     
     #[test]
@@ -136,7 +138,7 @@ mod terminal_formatter_tests {
         resource.action = ActionType::Read;
         
         let formatted = format_resource(&resource);
-        assert!(clean_ansi_codes(&formatted).contains("⇐ READ"));
+        assert!(clean_ansi_codes(&formatted).contains("READ"));
     }
     
     #[test]
@@ -149,10 +151,10 @@ mod terminal_formatter_tests {
         };
         
         let formatted = format_summary_line(&summary);
-        assert!(clean_ansi_codes(&formatted).contains("✚ 5 to add"));
-        assert!(clean_ansi_codes(&formatted).contains("↻ 3 to change"));
-        assert!(clean_ansi_codes(&formatted).contains("✖ 2 to destroy"));
-        assert!(clean_ansi_codes(&formatted).contains("⇐ 1 to read"));
+        assert!(clean_ansi_codes(&formatted).contains("5 to add"));
+        assert!(clean_ansi_codes(&formatted).contains("3 to change"));
+        assert!(clean_ansi_codes(&formatted).contains("2 to destroy"));
+        assert!(clean_ansi_codes(&formatted).contains("1 to read"));
         assert!(clean_ansi_codes(&formatted).contains("│"));
     }
     
@@ -166,9 +168,9 @@ mod terminal_formatter_tests {
         };
         
         let formatted = format_summary_line(&summary);
-        assert!(clean_ansi_codes(&formatted).contains("✚ 2 to add"));
+        assert!(clean_ansi_codes(&formatted).contains("2 to add"));
         assert!(!clean_ansi_codes(&formatted).contains("to change"));
-        assert!(clean_ansi_codes(&formatted).contains("✖ 1 to destroy"));
+        assert!(clean_ansi_codes(&formatted).contains("1 to destroy"));
         assert!(!clean_ansi_codes(&formatted).contains("to read"));
     }
 }

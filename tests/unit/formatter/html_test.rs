@@ -13,11 +13,11 @@ mod html_formatter_tests {
         
         assert!(output.contains("<!DOCTYPE html>"));
         assert!(output.contains("<html lang=\"en\">"));
-        assert!(output.contains("Terraform Plan Report"));
-        assert!(output.contains("📊 Summary"));
-        assert!(output.contains("✚ 2"));
+        assert!(output.contains("Terraform Plan Analysis"));
+        assert!(output.contains("Plan Summary"));
+        assert!(output.contains(">2<"));
         assert!(output.contains("to add"));
-        assert!(output.contains("↻ 1"));
+        assert!(output.contains(">1<"));
         assert!(output.contains("to change"));
     }
     
@@ -27,7 +27,7 @@ mod html_formatter_tests {
         plan.mode = PlanMode::Apply;
         
         let output = format_html_output(&plan);
-        assert!(output.contains("🌊 Terraform Apply Report"));
+        assert!(output.contains("Terraform Plan Analysis"));
     }
     
     #[test]
@@ -43,11 +43,11 @@ mod html_formatter_tests {
         
         let output = format_html_output(&plan);
         assert!(output.contains("<!DOCTYPE html>"));
-        assert!(output.contains("Terraform Plan Report"));
+        assert!(output.contains("Terraform Plan Analysis"));
         // Should not contain summary items when all counts are 0
-        assert!(!output.contains("✚ 0"));
-        assert!(!output.contains("↻ 0"));
-        assert!(!output.contains("✖ 0"));
+        assert!(!output.contains("to add"));
+        assert!(!output.contains("to change"));
+        assert!(!output.contains("to destroy"));
     }
     
     #[test]
@@ -70,12 +70,12 @@ mod html_formatter_tests {
         };
         
         let output = format_html_output(&plan);
-        assert!(output.contains("✚ 1"));
+        assert!(output.contains(">1<"));
         assert!(output.contains("to add"));
-        assert!(output.contains("✖ 2"));
+        assert!(output.contains(">2<"));
         assert!(output.contains("to destroy"));
-        assert!(output.contains("CREATE aws_s3_bucket.test"));
-        assert!(output.contains("DESTROY aws_instance.legacy"));
+        assert!(output.contains("aws_s3_bucket.test"));
+        assert!(output.contains("aws_instance.legacy"));
     }
     
     #[test]
@@ -95,7 +95,7 @@ mod html_formatter_tests {
         };
         
         let output = format_html_output(&plan);
-        assert!(output.contains("⇐ 3"));
+        assert!(output.contains(">3<"));
         assert!(output.contains("to read"));
     }
     
@@ -105,25 +105,17 @@ mod html_formatter_tests {
         let output = format_html_output(&plan);
         
         // Check for interactive JavaScript features
-        assert!(output.contains("<script>"));
-        assert!(output.contains("toggleResource"));
-        assert!(output.contains("filter-btn"));
-        assert!(output.contains("searchBox"));
-        assert!(output.contains("data-action"));
-        
-        // Check for CSS classes
-        assert!(output.contains("class=\"resource create\""));
-        assert!(output.contains("class=\"resource update\""));
+        // JavaScript is no longer included in the new format
+        assert!(output.contains("action-badge"));
         assert!(output.contains("resource-header"));
-        assert!(output.contains("resource-toggle"));
+        assert!(output.contains("resource-section"));
+        assert!(output.contains("diff-container"));
+        assert!(output.contains("diff-side"));
         
-        // Check for search and filter functionality
-        assert!(output.contains("🔍 Search resources..."));
-        assert!(output.contains("All Resources"));
-        assert!(output.contains("✚ Create"));
-        assert!(output.contains("↻ Update"));
-        assert!(output.contains("✖ Destroy"));
-        assert!(output.contains("⇐ Read"));
+        // Check for resource sections and action badges
+        assert!(output.contains("resource-section"));
+        assert!(output.contains("action-create"));
+        assert!(output.contains("action-update"));
     }
     
     #[test]
@@ -167,8 +159,7 @@ mod html_formatter_tests {
         let output = format_html_output(&plan);
         
         // Check that resource attributes are properly displayed
-        assert!(output.contains("attributes"));
-        assert!(output.contains("<strong>"));
+        assert!(output.contains("attribute"));
         assert!(output.contains("bucket"));
         assert!(output.contains("test-bucket"));
     }

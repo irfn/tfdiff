@@ -166,6 +166,52 @@ pub fn format_resource(resource: &crate::Resource) -> String {
     if resource.changes.is_empty() && !resource.attributes.is_empty() {
         output.push('\n');
         for (key, value) in &resource.attributes {
+            // Check if this attribute has arrow notation for side-by-side display
+            if let Value::String(val_str) = value {
+                if val_str.contains(" → ") {
+                    let parts: Vec<&str> = val_str.splitn(2, " → ").collect();
+                    if parts.len() == 2 {
+                        let before = parts[0].trim();
+                        let after = parts[1].trim();
+                        
+                        // For DESTROY resources with "→ null", just show the removal
+                        if resource.action == ActionType::Destroy && after == "null" {
+                            output.push_str(&format!("  {} {} = {}\n",
+                                "-".bright_red().bold(),
+                                key.bright_cyan(),
+                                before.bright_red()
+                            ));
+                            continue;
+                        }
+                        
+                        output.push_str(&format!("  {} {}\n", 
+                            "~".bright_yellow().bold(),
+                            key.bright_cyan()
+                        ));
+                        
+                        let max_width = 40;
+                        let before_truncated = if before.len() > max_width {
+                            format!("{}...", &before[..max_width-3])
+                        } else {
+                            before.to_string()
+                        };
+                        let after_truncated = if after.len() > max_width {
+                            format!("{}...", &after[..max_width-3])
+                        } else {
+                            after.to_string()
+                        };
+                        
+                        output.push_str(&format!("    {} {:<40} │ {} {}\n",
+                            "─".bright_red(),
+                            before_truncated.bright_red(),
+                            "+".bright_green(),
+                            after_truncated.bright_green()
+                        ));
+                        continue;
+                    }
+                }
+            }
+            
             let formatted_value = format_json_value(value, 1);
             output.push_str(&format!("  {} = {}\n", 
                 key.bright_cyan(),
@@ -220,18 +266,47 @@ fn format_changes(changes: &[Change], _action: &ActionType) -> String {
                 ));
             },
             (Some(before), Some(after)) if before != after => {
-                // Modification - show side by side
-                output.push_str(&format!("  {} {}:\n", 
+                // Check if this is a DESTROY action with null after value
+                if let ActionType::Destroy = _action {
+                    if after == &Value::Null {
+                        // For DESTROY with null, just show the value being removed
+                        output.push_str(&format!("  {} {} = {}\n",
+                            "-".bright_red().bold(),
+                            path_str.bright_cyan(),
+                            format_json_value(before, 2).bright_red()
+                        ));
+                        continue;
+                    }
+                }
+                
+                // Modification - show side by side with aligned columns
+                let before_formatted = format_json_value(before, 0);
+                let after_formatted = format_json_value(after, 0);
+                
+                output.push_str(&format!("  {} {}\n", 
                     "~".bright_yellow().bold(),
                     path_str.bright_cyan()
                 ));
-                output.push_str(&format!("    {} {}\n",
-                    "Before:".dimmed(),
-                    format_json_value(before, 3).bright_red()
-                ));
-                output.push_str(&format!("    {} {}\n",
-                    "After: ".dimmed(),
-                    format_json_value(after, 3).bright_green()
+                
+                // Calculate column widths for alignment
+                let max_width = 40; // Maximum width for each column
+                let before_truncated = if before_formatted.len() > max_width {
+                    format!("{}...", &before_formatted[..max_width-3])
+                } else {
+                    before_formatted.clone()
+                };
+                let after_truncated = if after_formatted.len() > max_width {
+                    format!("{}...", &after_formatted[..max_width-3])
+                } else {
+                    after_formatted.clone()
+                };
+                
+                // Show side-by-side with clear visual separation
+                output.push_str(&format!("    {} {:<40} │ {} {}\n",
+                    "─".bright_red(),
+                    before_truncated.bright_red(),
+                    "+".bright_green(),
+                    after_truncated.bright_green()
                 ));
             },
             _ => {

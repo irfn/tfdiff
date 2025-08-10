@@ -1,5 +1,5 @@
 use crate::{TerraformPlan, ActionType};
-use serde_json::Value;
+use serde_json::{Value, json};
 use chrono::Local;
 
 pub fn format_html_output(plan: &TerraformPlan) -> String {
@@ -657,9 +657,82 @@ fn format_update_diff(resource: &crate::Resource) -> String {
                 </div>
             </div>"#);
     } else if !resource.attributes.is_empty() {
-        // Fallback to attributes if no changes
-        html.push_str(&format_single_column(resource));
+        // Fallback to parsing attributes for side-by-side display
+        html.push_str(&format_attributes_as_diff(resource));
     }
+    
+    html
+}
+
+fn format_attributes_as_diff(resource: &crate::Resource) -> String {
+    let mut html = String::new();
+    let mut before_lines = Vec::new();
+    let mut after_lines = Vec::new();
+    
+    // Parse attributes and convert arrow notation to side-by-side
+    for (key, value) in &resource.attributes {
+        if let Value::String(val_str) = value {
+            // Check for arrow notation (old → new)
+            if val_str.contains(" → ") {
+                let parts: Vec<&str> = val_str.splitn(2, " → ").collect();
+                if parts.len() == 2 {
+                    before_lines.push(format!(r#"<span class="line remove">    <span class="attribute">{}</span> = {}</span>"#,
+                        key, format_value(&json!(parts[0]), true)));
+                    after_lines.push(format!(r#"<span class="line add">    <span class="attribute">{}</span> = {}</span>"#,
+                        key, format_value(&json!(parts[1]), true)));
+                    continue;
+                }
+            }
+            // Check for addition prefix
+            else if val_str.starts_with("+ ") {
+                after_lines.push(format!(r#"<span class="line add">    <span class="attribute">{}</span> = {}</span>"#,
+                    key, format_value(&json!(&val_str[2..]), true)));
+                continue;
+            }
+            // Check for removal prefix
+            else if val_str.starts_with("- ") {
+                before_lines.push(format!(r#"<span class="line remove">    <span class="attribute">{}</span> = {}</span>"#,
+                    key, format_value(&json!(&val_str[2..]), true)));
+                continue;
+            }
+        }
+        
+        // Default: show on both sides as unchanged
+        let line = format!(r#"<span class="line unchanged">    <span class="attribute">{}</span> = {}</span>"#,
+            key, format_value(value, true));
+        before_lines.push(line.clone());
+        after_lines.push(line);
+    }
+    
+    html.push_str(r#"
+            <div class="diff-container">
+                <div class="diff-side">
+                    <div class="diff-header">Current State</div>
+                    <div class="diff-content">"#);
+    
+    if before_lines.is_empty() {
+        html.push_str(r#"<span class="line unchanged">    # (no previous state)</span>"#);
+    } else {
+        for line in before_lines {
+            html.push_str(&line);
+            html.push('\n');
+        }
+    }
+    
+    html.push_str(r#"</div>
+                </div>
+                <div class="diff-side">
+                    <div class="diff-header">After Apply</div>
+                    <div class="diff-content">"#);
+    
+    for line in after_lines {
+        html.push_str(&line);
+        html.push('\n');
+    }
+    
+    html.push_str(r#"</div>
+                </div>
+            </div>"#);
     
     html
 }

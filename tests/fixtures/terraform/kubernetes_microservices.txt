@@ -1,0 +1,643 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+  - destroy
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # kubernetes_namespace.microservices will be created
+  + resource "kubernetes_namespace" "microservices" {
+      + id = (known after apply)
+
+      + metadata {
+          + generation       = (known after apply)
+          + name             = "microservices"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+          + annotations      = {
+              + "cost-center"     = "engineering"
+              + "istio-injection" = "enabled"
+              + "team"           = "platform"
+            }
+          + labels           = {
+              + "environment"    = "production"
+              + "managed-by"     = "terraform"
+              + "service-mesh"   = "istio"
+            }
+        }
+    }
+
+  # kubernetes_deployment.user_service will be created
+  + resource "kubernetes_deployment" "user_service" {
+      + id               = (known after apply)
+      + wait_for_rollout = true
+
+      + metadata {
+          + generation       = (known after apply)
+          + name             = "user-service"
+          + namespace        = "microservices"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+          + annotations      = {
+              + "deployment.kubernetes.io/revision" = (known after apply)
+            }
+          + labels           = {
+              + "app"         = "user-service"
+              + "component"   = "backend"
+              + "environment" = "production"
+              + "version"     = "v2.1.0"
+            }
+        }
+
+      + spec {
+          + min_ready_seconds         = 10
+          + paused                    = false
+          + progress_deadline_seconds = 600
+          + replicas                  = "3"
+          + revision_history_limit    = 10
+
+          + selector {
+              + match_labels = {
+                  + "app"     = "user-service"
+                  + "version" = "v2.1.0"
+                }
+            }
+
+          + strategy {
+              + type = "RollingUpdate"
+
+              + rolling_update {
+                  + max_surge       = "25%"
+                  + max_unavailable = "25%"
+                }
+            }
+
+          + template {
+              + metadata {
+                  + generation       = (known after apply)
+                  + resource_version = (known after apply)
+                  + uid              = (known after apply)
+                  + annotations      = {
+                      + "prometheus.io/path"   = "/metrics"
+                      + "prometheus.io/port"   = "8080"
+                      + "prometheus.io/scrape" = "true"
+                      + "sidecar.istio.io/inject" = "true"
+                    }
+                  + labels           = {
+                      + "app"         = "user-service"
+                      + "component"   = "backend"
+                      + "version"     = "v2.1.0"
+                    }
+                }
+
+              + spec {
+                  + automount_service_account_token  = true
+                  + dns_policy                       = "ClusterFirst"
+                  + enable_service_links             = true
+                  + host_ipc                         = false
+                  + host_network                     = false
+                  + host_pid                         = false
+                  + hostname                         = (known after apply)
+                  + node_name                        = (known after apply)
+                  + restart_policy                   = "Always"
+                  + service_account_name             = (known after apply)
+                  + share_process_namespace          = false
+                  + termination_grace_period_seconds = 30
+
+                  + container {
+                      + image             = "myregistry.io/user-service:v2.1.0"
+                      + image_pull_policy = "Always"
+                      + name              = "user-service"
+                      + stdin             = false
+                      + stdin_once        = false
+                      + termination_message_path   = "/dev/termination-log"
+                      + termination_message_policy = "File"
+                      + tty               = false
+
+                      + env {
+                          + name  = "DATABASE_URL"
+                          + value = "postgresql://postgres:password@postgresql.microservices.svc.cluster.local:5432/userdb"
+                        }
+
+                      + env {
+                          + name  = "REDIS_URL"
+                          + value = "redis://redis.microservices.svc.cluster.local:6379"
+                        }
+
+                      + env {
+                          + name  = "LOG_LEVEL"
+                          + value = "info"
+                        }
+
+                      + env {
+                          + name = "JWT_SECRET"
+
+                          + value_from {
+                              + secret_key_ref {
+                                  + key  = "jwt-secret"
+                                  + name = "user-service-secrets"
+                                }
+                            }
+                        }
+
+                      + liveness_probe {
+                          + failure_threshold     = 3
+                          + initial_delay_seconds = 30
+                          + period_seconds        = 10
+                          + success_threshold     = 1
+                          + timeout_seconds       = 5
+
+                          + http_get {
+                              + path   = "/health"
+                              + port   = "8080"
+                              + scheme = "HTTP"
+                            }
+                        }
+
+                      + port {
+                          + container_port = 8080
+                          + name           = "http"
+                          + protocol       = "TCP"
+                        }
+
+                      + readiness_probe {
+                          + failure_threshold     = 3
+                          + initial_delay_seconds = 10
+                          + period_seconds        = 5
+                          + success_threshold     = 1
+                          + timeout_seconds       = 3
+
+                          + http_get {
+                              + path   = "/ready"
+                              + port   = "8080"
+                              + scheme = "HTTP"
+                            }
+                        }
+
+                      + resources {
+                          + limits = {
+                              + "cpu"    = "500m"
+                              + "memory" = "512Mi"
+                            }
+                          + requests = {
+                              + "cpu"    = "200m"
+                              + "memory" = "256Mi"
+                            }
+                        }
+
+                      + volume_mount {
+                          + mount_path = "/app/config"
+                          + name       = "config-volume"
+                          + read_only  = true
+                        }
+
+                      + volume_mount {
+                          + mount_path = "/tmp"
+                          + name       = "tmp-volume"
+                        }
+                    }
+
+                  + image_pull_secrets {
+                      + name = "registry-secret"
+                    }
+
+                  + volume {
+                      + name = "config-volume"
+
+                      + config_map {
+                          + default_mode = "0644"
+                          + name         = "user-service-config"
+                        }
+                    }
+
+                  + volume {
+                      + name = "tmp-volume"
+
+                      + empty_dir {
+                          + medium     = (known after apply)
+                          + size_limit = (known after apply)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+  # data.kubernetes_config_map.app_config will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "kubernetes_config_map" "app_config" {
+      + binary_data = (known after apply)
+      + data        = (known after apply)
+      + id          = (known after apply)
+      + immutable   = (known after apply)
+
+      + metadata {
+          + annotations      = (known after apply)
+          + generation       = (known after apply)
+          + labels           = (known after apply)
+          + name             = "app-config"
+          + namespace        = "microservices"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # data.kubernetes_secret.database_credentials will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "kubernetes_secret" "database_credentials" {
+      + binary_data = (known after apply)
+      + data        = (known after apply)
+      + id          = (known after apply)
+      + immutable   = (known after apply)
+      + type        = (known after apply)
+
+      + metadata {
+          + annotations      = (known after apply)
+          + generation       = (known after apply)
+          + labels           = (known after apply)
+          + name             = "postgresql-credentials"
+          + namespace        = "microservices"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # kubernetes_service.user_service will be updated in-place
+  ~ resource "kubernetes_service" "user_service" {
+        id                     = "microservices/user-service"
+        status                 = [
+            {
+                load_balancer = [
+                    {
+                        ingress = []
+                    },
+                ]
+            },
+        ]
+      ~ wait_for_load_balancer = false -> true
+
+        metadata {
+            annotations      = {
+                "service.beta.kubernetes.io/aws-load-balancer-type" = "nlb"
+            }
+            generation       = 1
+            labels           = {
+                "app"         = "user-service"
+                "component"   = "backend"
+                "environment" = "production"
+            }
+            name             = "user-service"
+            namespace        = "microservices"
+            resource_version = "12345"
+            uid              = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        }
+
+        spec {
+          ~ external_traffic_policy = "Cluster" -> "Local"
+          ~ health_check_node_port   = 0 -> (known after apply)
+          ~ load_balancer_source_ranges = [] -> (known after apply)
+          ~ publish_not_ready_addresses = false -> true
+            selector                 = {
+                "app"     = "user-service"
+                "version" = "v2.1.0"
+            }
+          ~ session_affinity         = "None" -> "ClientIP"
+          ~ type                     = "ClusterIP" -> "LoadBalancer"
+
+          ~ port {
+              ~ name        = "http" -> "http-web"
+              ~ node_port   = 0 -> (known after apply)
+                port        = 80
+              ~ protocol    = "TCP" -> "TCP"
+                target_port = "8080"
+            }
+
+          + port {
+              + name        = "grpc"
+              + port        = 9090
+              + protocol    = "TCP"
+              + target_port = "9090"
+            }
+
+          + session_affinity_config {
+              + client_ip {
+                  + timeout_seconds = 10800
+                }
+            }
+        }
+    }
+
+  # kubernetes_ingress_v1.api_gateway will be updated in-place
+  ~ resource "kubernetes_ingress_v1" "api_gateway" {
+        id                     = "microservices/api-gateway"
+        status                 = [
+            {
+                load_balancer = [
+                    {
+                        ingress = [
+                            {
+                                hostname = "api.example.com"
+                                ip       = ""
+                            },
+                        ]
+                    },
+                ]
+            },
+        ]
+        wait_for_load_balancer = false
+
+        metadata {
+          ~ annotations      = {
+              ~ "cert-manager.io/cluster-issuer"                = "letsencrypt-staging" -> "letsencrypt-prod"
+              ~ "kubernetes.io/ingress.class"                   = "nginx" -> "alb"
+              + "alb.ingress.kubernetes.io/certificate-arn"    = "arn:aws:acm:us-west-2:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+              + "alb.ingress.kubernetes.io/listen-ports"       = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+              + "alb.ingress.kubernetes.io/ssl-redirect"       = "443"
+              + "alb.ingress.kubernetes.io/target-type"        = "ip"
+              - "nginx.ingress.kubernetes.io/rate-limit"       = "100" -> null
+              - "nginx.ingress.kubernetes.io/rate-limit-window" = "1m" -> null
+            }
+            generation       = 2
+            labels           = {
+                "app"         = "api-gateway"
+                "environment" = "production"
+            }
+            name             = "api-gateway"
+            namespace        = "microservices"
+            resource_version = "67890"
+            uid              = "f1e2d3c4-b5a6-7890-1234-567890abcdef"
+        }
+
+        spec {
+          ~ ingress_class_name = "nginx" -> "alb"
+
+          ~ rule {
+              ~ host = "api-staging.example.com" -> "api.example.com"
+
+                http {
+                  ~ path {
+                      ~ path      = "/api/v1" -> "/api/v2"
+                      ~ path_type = "Prefix" -> "Exact"
+
+                        backend {
+                            service {
+                                name = "user-service"
+
+                                port {
+                                    number = 80
+                                }
+                            }
+                        }
+                    }
+
+                  + path {
+                      + path      = "/api/v1"
+                      + path_type = "Prefix"
+
+                      + backend {
+                          + service {
+                              + name = "legacy-service"
+
+                              + port {
+                                  + number = 8080
+                                }
+                            }
+                        }
+                    }
+
+                  ~ path {
+                      ~ path      = "/health" -> "/healthz"
+                        path_type = "Exact"
+
+                        backend {
+                            service {
+                              ~ name = "health-check" -> "health-service"
+
+                                port {
+                                  ~ number = 8080 -> 9090
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            tls {
+                hosts       = [
+                  ~ "api-staging.example.com",
+                  + "api.example.com",
+                ]
+              ~ secret_name = "api-tls-staging" -> "api-tls-prod"
+            }
+        }
+    }
+
+  # kubernetes_horizontal_pod_autoscaler_v2.user_service_hpa will be updated in-place
+  ~ resource "kubernetes_horizontal_pod_autoscaler_v2" "user_service_hpa" {
+        id = "microservices/user-service-hpa"
+
+        metadata {
+            annotations      = {}
+            generation       = 1
+            labels           = {
+                "app" = "user-service"
+            }
+            name             = "user-service-hpa"
+            namespace        = "microservices"
+            resource_version = "98765"
+            uid              = "hpa-1234-5678-90ab-cdef12345678"
+        }
+
+        spec {
+          ~ max_replicas = 10 -> 20
+          ~ min_replicas = 3 -> 5
+
+            scale_target_ref {
+                api_version = "apps/v1"
+                kind        = "Deployment"
+                name        = "user-service"
+            }
+
+          ~ metric {
+              ~ type = "Resource" -> "Resource"
+
+              ~ resource {
+                  ~ name = "cpu" -> "cpu"
+
+                  ~ target {
+                      ~ average_utilization = 70 -> 60
+                        type                = "Utilization"
+                    }
+                }
+            }
+
+          + metric {
+              + type = "Resource"
+
+              + resource {
+                  + name = "memory"
+
+                  + target {
+                      + average_utilization = 80
+                      + type                = "Utilization"
+                    }
+                }
+            }
+
+          + behavior {
+              + scale_down {
+                  + select_policy                = "Min"
+                  + stabilization_window_seconds = 300
+
+                  + policy {
+                      + period_seconds = 60
+                      + type          = "Percent"
+                      + value         = 10
+                    }
+                }
+
+              + scale_up {
+                  + select_policy                = "Max"
+                  + stabilization_window_seconds = 60
+
+                  + policy {
+                      + period_seconds = 60
+                      + type          = "Percent"
+                      + value         = 25
+                    }
+
+                  + policy {
+                      + period_seconds = 60
+                      + type          = "Pods"
+                      + value         = 2
+                    }
+                }
+            }
+        }
+    }
+
+  # helm_release.prometheus will be destroyed
+  - resource "helm_release" "prometheus" {
+      - atomic                     = false -> null
+      - chart                      = "prometheus" -> null
+      - cleanup_on_fail            = false -> null
+      - create_namespace           = false -> null
+      - dependency_update          = false -> null
+      - disable_crd_hooks          = false -> null
+      - disable_openapi_validation = false -> null
+      - disable_webhooks           = false -> null
+      - force_update               = false -> null
+      - id                         = "prometheus" -> null
+      - lint                       = false -> null
+      - max_history                = 0 -> null
+      - name                       = "prometheus" -> null
+      - namespace                  = "monitoring" -> null
+      - pass_credentials           = false -> null
+      - recreate_pods              = false -> null
+      - render_subchart_notes      = true -> null
+      - replace                    = false -> null
+      - repository                 = "https://prometheus-community.github.io/helm-charts" -> null
+      - reset_values               = false -> null
+      - reuse_values               = false -> null
+      - skip_crds                  = false -> null
+      - status                     = "deployed" -> null
+      - timeout                    = 300 -> null
+      - verify                     = false -> null
+      - version                    = "15.18.0" -> null
+      - wait                       = true -> null
+      - wait_for_jobs              = false -> null
+
+      - metadata {
+          - app_version = "2.40.5" -> null
+          - chart       = "prometheus-15.18.0" -> null
+          - name        = "prometheus" -> null
+          - namespace   = "monitoring" -> null
+          - revision    = 1 -> null
+          - version     = "15.18.0" -> null
+        }
+
+      - set {
+          - name  = "server.persistentVolume.size" -> null
+          - value = "20Gi" -> null
+        }
+
+      - set {
+          - name  = "server.retention" -> null
+          - value = "15d" -> null
+        }
+
+      - set_sensitive {
+          - name  = "server.adminPassword" -> null
+          - value = (sensitive value)
+        }
+    }
+
+  # kubernetes_persistent_volume_claim.legacy_storage will be destroyed
+  - resource "kubernetes_persistent_volume_claim" "legacy_storage" {
+      - id                               = "default/legacy-storage-pvc" -> null
+      - wait_until_bound                 = true -> null
+
+      - metadata {
+          - annotations      = {
+              - "volume.beta.kubernetes.io/storage-class" = "gp2"
+            } -> null
+          - generation       = 1 -> null
+          - labels           = {
+              - "app"    = "legacy-app"
+              - "legacy" = "true"
+            } -> null
+          - name             = "legacy-storage-pvc" -> null
+          - namespace        = "default" -> null
+          - resource_version = "54321" -> null
+          - uid              = "pvc-abcd1234-ef56-7890-1234-567890abcdef" -> null
+        }
+
+      - spec {
+          - access_modes       = [
+              - "ReadWriteOnce",
+            ] -> null
+          - storage_class_name = "gp2" -> null
+          - volume_name        = "pv-legacy-storage" -> null
+
+          - resources {
+              - requests = {
+                  - "storage" = "100Gi"
+                } -> null
+            }
+
+          - selector {
+              - match_labels = {
+                  - "type" = "legacy"
+                } -> null
+            }
+        }
+    }
+
+Plan: 2 to add, 4 to change, 3 to destroy.
+
+Changes to Outputs:
+
+  + api_gateway_url = (known after apply)
+  + user_service_endpoint = (known after apply)
+  - legacy_pvc_name = "legacy-storage-pvc" -> null
+  - prometheus_endpoint = "http://prometheus-server.monitoring.svc.cluster.local" -> null
+
+Warning: Deprecated Helm chart version
+
+  on kubernetes.tf line 234, in resource "helm_release" "prometheus":
+ 234:   version = "15.18.0"
+
+Helm chart prometheus version 15.18.0 is deprecated. Please upgrade to version 16.0.0 or later.
+
+Warning: PersistentVolume reclaim policy
+
+The PersistentVolume associated with this PVC has a reclaim policy of "Delete".
+Data will be permanently lost when the PVC is deleted.
+
+Warning: Kubernetes API deprecation
+
+  on kubernetes.tf line 456, in resource "kubernetes_ingress_v1":
+
+The networking.k8s.io/v1beta1 Ingress API is deprecated in Kubernetes 1.22+.
+Please migrate to networking.k8s.io/v1 Ingress API.

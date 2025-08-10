@@ -1,0 +1,716 @@
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+  - destroy
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # google_compute_instance.web_server will be created
+  + resource "google_compute_instance" "web_server" {
+      + can_ip_forward       = false
+      + cpu_platform         = (known after apply)
+      + current_status       = (known after apply)
+      + deletion_protection  = false
+      + guest_accelerator    = (known after apply)
+      + id                   = (known after apply)
+      + instance_id          = (known after apply)
+      + label_fingerprint    = (known after apply)
+      + machine_type         = "e2-standard-4"
+      + metadata_fingerprint = (known after apply)
+      + min_cpu_platform     = (known after apply)
+      + name                 = "enterprise-web-server-001"
+      + project              = "enterprise-project-12345"
+      + self_link            = (known after apply)
+      + tags_fingerprint     = (known after apply)
+      + zone                 = "us-central1-a"
+
+      + boot_disk {
+          + auto_delete                = true
+          + device_name                = (known after apply)
+          + disk_encryption_key_sha256 = (known after apply)
+          + kms_key_self_link          = (known after apply)
+          + mode                       = "READ_WRITE"
+          + source                     = (known after apply)
+
+          + initialize_params {
+              + image  = "ubuntu-os-cloud/ubuntu-2204-jammy-v20230114"
+              + labels = {
+                  + "environment" = "production"
+                  + "managed-by"  = "terraform"
+                  + "team"        = "devops"
+                }
+              + size   = 100
+              + type   = "pd-ssd"
+            }
+        }
+
+      + network_interface {
+          + internal_ipv6_prefix_length = (known after apply)
+          + ipv6_access_type            = (known after apply)
+          + ipv6_address                = (known after apply)
+          + name                        = (known after apply)
+          + network                     = "default"
+          + network_ip                  = (known after apply)
+          + stack_type                  = (known after apply)
+          + subnetwork                  = (known after apply)
+          + subnetwork_project          = (known after apply)
+
+          + access_config {
+              + nat_ip       = (known after apply)
+              + network_tier = "PREMIUM"
+            }
+        }
+
+      + metadata = {
+          + "startup-script" = <<-EOT
+                #!/bin/bash
+                apt update -y
+                apt install -y docker.io nginx
+                systemctl enable docker nginx
+                systemctl start docker nginx
+                
+                # Install monitoring agent
+                curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+                bash add-google-cloud-ops-agent-repo.sh --also-install
+                
+                # Configure application
+                docker run -d --name app --restart always \
+                  -p 8080:8080 \
+                  -e DATABASE_URL="postgresql://user:pass@10.0.1.10:5432/app" \
+                  -e REDIS_URL="redis://10.0.1.20:6379" \
+                  gcr.io/enterprise-project-12345/webapp:v1.2.3
+            EOT
+        }
+
+      + scheduling {
+          + automatic_restart   = true
+          + min_node_cpus       = (known after apply)
+          + on_host_maintenance = "MIGRATE"
+          + preemptible         = false
+          + provisioning_model  = (known after apply)
+        }
+
+      + service_account {
+          + email  = "compute-service-account@enterprise-project-12345.iam.gserviceaccount.com"
+          + scopes = [
+              + "https://www.googleapis.com/auth/cloud-platform",
+            ]
+        }
+
+      + tags = [
+          + "http-server",
+          + "https-server",
+          + "production",
+          + "web-tier",
+        ]
+    }
+
+  # azurerm_virtual_machine.backup_server will be created
+  + resource "azurerm_virtual_machine" "backup_server" {
+      + availability_set_id              = (known after apply)
+      + delete_data_disks_on_termination = false
+      + delete_os_disk_on_termination    = false
+      + id                               = (known after apply)
+      + license_type                     = (known after apply)
+      + location                         = "East US 2"
+      + name                             = "backup-server-vm"
+      + network_interface_ids            = (known after apply)
+      + resource_group_name              = "enterprise-backup-rg"
+      + tags                             = {
+          + "backup-tier"   = "critical"
+          + "cost-center"   = "infrastructure"
+          + "environment"   = "production"
+          + "managed-by"    = "terraform"
+        }
+      + vm_size                          = "Standard_D4s_v3"
+      + zones                            = (known after apply)
+
+      + identity {
+          + identity_ids = (known after apply)
+          + principal_id = (known after apply)
+          + type         = "SystemAssigned"
+        }
+
+      + os_profile {
+          + admin_password                 = (sensitive value)
+          + admin_username                 = "azureuser"
+          + computer_name                  = "backup-server"
+          + custom_data                    = (known after apply)
+        }
+
+      + os_profile_linux_config {
+          + disable_password_authentication = false
+
+          + ssh_keys {
+              + key_data = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD..."
+              + path     = "/home/azureuser/.ssh/authorized_keys"
+            }
+        }
+
+      + storage_data_disk {
+          + caching                   = "ReadWrite"
+          + create_option             = "Empty"
+          + disk_size_gb              = 1024
+          + lun                       = 0
+          + managed_disk_type         = "Premium_LRS"
+          + name                      = "backup-data-disk"
+        }
+
+      + storage_image_reference {
+          + offer     = "0001-com-ubuntu-server-jammy"
+          + publisher = "Canonical"
+          + sku       = "22_04-lts-gen2"
+          + version   = "latest"
+        }
+
+      + storage_os_disk {
+          + caching                   = "ReadWrite"
+          + create_option             = "FromImage"
+          + disk_size_gb              = (known after apply)
+          + managed_disk_type         = "Premium_LRS"
+          + name                      = "backup-os-disk"
+        }
+    }
+
+  # data.aws_iam_policy_document.cross_account_policy will be read during apply
+  # (config refers to values not yet known)
+ <= data "aws_iam_policy_document" "cross_account_policy" {
+      + id   = (known after apply)
+      + json = (known after apply)
+
+      + statement {
+          + actions   = [
+              + "s3:GetObject",
+              + "s3:PutObject",
+              + "s3:DeleteObject",
+              + "s3:ListBucket",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + "arn:aws:s3:::enterprise-backup-bucket",
+              + "arn:aws:s3:::enterprise-backup-bucket/*",
+            ]
+          + sid       = "AllowS3Access"
+
+          + principals {
+              + identifiers = [
+                  + "arn:aws:iam::111122223333:root",
+                  + "arn:aws:iam::444455556666:role/CrossAccountBackupRole",
+                ]
+              + type        = "AWS"
+            }
+
+          + condition {
+              + test     = "StringEquals"
+              + values   = ["enterprise-backup"]
+              + variable = "s3:ExistingObjectTag/Environment"
+            }
+
+          + condition {
+              + test     = "DateGreaterThan"
+              + values   = ["2025-01-01T00:00:00Z"]
+              + variable = "aws:CurrentTime"
+            }
+        }
+
+      + statement {
+          + actions   = [
+              + "kms:Encrypt",
+              + "kms:Decrypt",
+              + "kms:ReEncrypt*",
+              + "kms:GenerateDataKey*",
+              + "kms:DescribeKey",
+            ]
+          + effect    = "Allow"
+          + resources = ["*"]
+          + sid       = "AllowKMSAccess"
+
+          + principals {
+              + identifiers = [
+                  + "arn:aws:iam::111122223333:root",
+                ]
+              + type        = "AWS"
+            }
+
+          + condition {
+              + test     = "StringEquals"
+              + values   = ["s3.us-east-1.amazonaws.com"]
+              + variable = "kms:ViaService"
+            }
+        }
+    }
+
+  # data.google_compute_zones.available will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "google_compute_zones" "available" {
+      + id      = (known after apply)
+      + names   = (known after apply)
+      + project = "enterprise-project-12345"
+      + region  = "us-central1"
+      + status  = (known after apply)
+    }
+
+  # aws_s3_bucket_policy.enterprise_backup will be updated in-place
+  ~ resource "aws_s3_bucket_policy" "enterprise_backup" {
+        bucket = "enterprise-backup-bucket"
+        id     = "enterprise-backup-bucket"
+      ~ policy = jsonencode(
+          ~ {
+              ~ Statement = [
+                  ~ {
+                        Action    = [
+                            "s3:GetObject",
+                            "s3:PutObject",
+                          ~ "s3:DeleteObject",
+                          + "s3:RestoreObject",
+                            "s3:ListBucket",
+                        ]
+                      ~ Condition = {
+                          ~ StringEquals = {
+                              ~ "s3:ExistingObjectTag/Environment" = [
+                                  ~ "backup",
+                                  + "enterprise-backup",
+                                ]
+                              + "s3:ExistingObjectTag/Classification" = [
+                                  + "confidential",
+                                  + "internal",
+                                ]
+                              ~ "aws:userid"                       = [
+                                  ~ "AIDACKCEVSQ6C2EXAMPLE",
+                                  + "AIDACKCEVSQ6C2UPDATED1",
+                                  + "AIDACKCEVSQ6C2UPDATED2",
+                                ]
+                            }
+                          + IpAddress    = {
+                              + "aws:SourceIp" = [
+                                  + "203.0.113.0/24",
+                                  + "198.51.100.0/24",
+                                ]
+                            }
+                          - DateLessThan = {
+                              - "aws:CurrentTime" = "2024-12-31T23:59:59Z" -> null
+                            }
+                        }
+                        Effect    = "Allow"
+                        Principal = {
+                          ~ AWS = [
+                              ~ "arn:aws:iam::111122223333:root",
+                              ~ "arn:aws:iam::444455556666:role/BackupRole" -> "arn:aws:iam::444455556666:role/CrossAccountBackupRole",
+                              + "arn:aws:iam::777788889999:role/AuditRole",
+                            ]
+                        }
+                        Resource  = [
+                            "arn:aws:s3:::enterprise-backup-bucket",
+                            "arn:aws:s3:::enterprise-backup-bucket/*",
+                        ]
+                        Sid       = "AllowCrossAccountAccess"
+                    },
+                  + {
+                      + Action    = [
+                          + "s3:GetBucketVersioning",
+                          + "s3:ListBucketVersions",
+                          + "s3:GetObjectVersion",
+                        ]
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + AWS = [
+                              + "arn:aws:iam::111122223333:role/ComplianceRole",
+                            ]
+                        }
+                      + Resource  = [
+                          + "arn:aws:s3:::enterprise-backup-bucket",
+                          + "arn:aws:s3:::enterprise-backup-bucket/*",
+                        ]
+                      + Sid       = "AllowComplianceAccess"
+                    },
+                ]
+                Version   = "2012-10-17"
+            }
+        )
+    }
+
+  # aws_iam_role.cross_service_role will be updated in-place
+  ~ resource "aws_iam_role" "cross_service_role" {
+        arn                   = "arn:aws:iam::123456789012:role/CrossServiceRole"
+        assume_role_policy    = jsonencode(
+            {
+                Statement = [
+                    {
+                        Action = "sts:AssumeRole"
+                        Effect = "Allow"
+                        Principal = {
+                            Service = [
+                              ~ "ec2.amazonaws.com",
+                              ~ "lambda.amazonaws.com",
+                              + "ecs-tasks.amazonaws.com",
+                              + "batch.amazonaws.com",
+                            ]
+                        }
+                        Sid = "AssumeRolePolicy"
+                    },
+                  + {
+                      + Action = "sts:AssumeRoleWithWebIdentity"
+                      + Effect = "Allow"
+                      + Principal = {
+                          + Federated = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
+                        }
+                      + Condition = {
+                          + StringEquals = {
+                              + "oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE:sub" = "system:serviceaccount:default:my-service-account"
+                              + "oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE:aud" = "sts.amazonaws.com"
+                            }
+                        }
+                      + Sid = "AssumeRoleWithWebIdentity"
+                    },
+                ]
+                Version = "2012-10-17"
+            }
+        )
+        create_date           = "2024-01-01T10:00:00Z"
+        force_detach_policies = false
+        id                    = "CrossServiceRole"
+      ~ managed_policy_arns   = [
+          + "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+          + "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+          - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+            "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+        ]
+        max_session_duration  = 3600
+        name                  = "CrossServiceRole"
+        name_prefix           = (known after apply)
+        path                  = "/"
+        tags                  = {
+            "Department"  = "Engineering"
+            "Environment" = "Production"
+        }
+        tags_all              = {
+            "Department"  = "Engineering"
+            "Environment" = "Production"
+        }
+        unique_id             = "AROACKCEVSQ6C2EXAMPLE"
+
+      ~ inline_policy {
+          ~ name   = "CrossServiceInlinePolicy" -> "UpdatedCrossServicePolicy"
+          ~ policy = jsonencode(
+              ~ {
+                  ~ Statement = [
+                      ~ {
+                            Action   = [
+                              ~ "secretsmanager:GetSecretValue",
+                              + "secretsmanager:DescribeSecret",
+                              + "secretsmanager:ListSecrets",
+                            ]
+                            Effect   = "Allow"
+                          ~ Resource = [
+                              ~ "arn:aws:secretsmanager:us-west-2:123456789012:secret:prod/*",
+                              + "arn:aws:secretsmanager:*:123456789012:secret:enterprise/*",
+                            ]
+                            Sid      = "SecretsManagerAccess"
+                        },
+                      + {
+                          + Action   = [
+                              + "ssm:GetParameter",
+                              + "ssm:GetParameters",
+                              + "ssm:GetParametersByPath",
+                            ]
+                          + Effect   = "Allow"
+                          + Resource = [
+                              + "arn:aws:ssm:*:123456789012:parameter/enterprise/*",
+                            ]
+                          + Sid      = "ParameterStoreAccess"
+                        },
+                      ~ {
+                          ~ Action   = [
+                              ~ "logs:CreateLogGroup",
+                              ~ "logs:CreateLogStream",
+                              ~ "logs:PutLogEvents",
+                              + "logs:CreateLogGroup",
+                              + "logs:CreateLogStream",
+                              + "logs:PutLogEvents",
+                              + "logs:DescribeLogGroups",
+                              + "logs:DescribeLogStreams",
+                            ]
+                            Effect   = "Allow"
+                            Resource = "*"
+                            Sid      = "CloudWatchLogsAccess"
+                        },
+                    ]
+                    Version = "2012-10-17"
+                }
+            )
+        }
+    }
+
+  # google_compute_firewall.enterprise_web_firewall will be updated in-place
+  ~ resource "google_compute_firewall" "enterprise_web_firewall" {
+        creation_timestamp = "2024-01-01T10:00:00.000-08:00"
+        destination_ranges = (known after apply)
+        direction          = "INGRESS"
+        disabled           = false
+        id                 = "projects/enterprise-project-12345/global/firewalls/enterprise-web-firewall"
+        name               = "enterprise-web-firewall"
+        network            = "https://www.googleapis.com/compute/v1/projects/enterprise-project-12345/global/networks/default"
+        priority           = 1000
+        project            = "enterprise-project-12345"
+        self_link          = "https://www.googleapis.com/compute/v1/projects/enterprise-project-12345/global/firewalls/enterprise-web-firewall"
+      ~ source_ranges      = [
+          - "0.0.0.0/0",
+          + "10.0.0.0/8",
+          + "172.16.0.0/12",
+          + "192.168.0.0/16",
+        ]
+        source_tags        = (known after apply)
+      ~ target_tags        = [
+          + "database-tier",
+            "http-server",
+            "https-server",
+          - "ssh-server",
+            "web-tier",
+        ]
+
+      ~ allow {
+          ~ ports    = [
+              - "22",
+                "80",
+              ~ "443",
+              + "8080",
+              + "8443",
+            ]
+            protocol = "tcp"
+        }
+
+      + allow {
+          + ports    = [
+              + "3306",
+              + "5432",
+            ]
+          + protocol = "tcp"
+        }
+
+      - deny {
+          - ports    = [
+              - "23",
+              - "135",
+              - "139",
+              - "445",
+            ] -> null
+          - protocol = "tcp" -> null
+        }
+    }
+
+  # azurerm_network_security_group.backup_nsg will be updated in-place
+  ~ resource "azurerm_network_security_group" "backup_nsg" {
+        id                  = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/enterprise-backup-rg/providers/Microsoft.Network/networkSecurityGroups/backup-nsg"
+        location            = "eastus2"
+        name                = "backup-nsg"
+        resource_group_name = "enterprise-backup-rg"
+      ~ security_rule       = [
+          + {
+              + access                                     = "Allow"
+              + description                                = "Allow backup traffic from corporate network"
+              + destination_address_prefix                 = "*"
+              + destination_address_prefixes               = []
+              + destination_application_security_group_ids = []
+              + destination_port_range                     = "22"
+              + destination_port_ranges                    = []
+              + direction                                  = "Inbound"
+              + name                                       = "Allow-Corporate-SSH"
+              + priority                                   = 100
+              + protocol                                   = "Tcp"
+              + source_address_prefix                      = "203.0.113.0/24"
+              + source_address_prefixes                    = []
+              + source_application_security_group_ids     = []
+              + source_port_range                          = "*"
+              + source_port_ranges                         = []
+            },
+            {
+                access                                     = "Allow"
+                description                                = "Allow HTTPS inbound"
+                destination_address_prefix                 = "*"
+                destination_address_prefixes               = []
+                destination_application_security_group_ids = []
+                destination_port_range                     = "443"
+                destination_port_ranges                    = []
+                direction                                  = "Inbound"
+                name                                       = "Allow-HTTPS"
+                priority                                   = 200
+                protocol                                   = "Tcp"
+              ~ source_address_prefix                      = "0.0.0.0/0" -> "10.0.0.0/8"
+                source_address_prefixes                    = []
+                source_application_security_group_ids     = []
+                source_port_range                          = "*"
+                source_port_ranges                         = []
+            },
+          ~ {
+                access                                     = "Allow"
+              ~ description                                = "Allow backup service" -> "Allow backup and monitoring services"
+                destination_address_prefix                 = "*"
+                destination_address_prefixes               = []
+                destination_application_security_group_ids = []
+              ~ destination_port_range                     = "8080" -> ""
+              ~ destination_port_ranges                    = [] -> [
+                  + "8080",
+                  + "9090",
+                  + "9100",
+                ]
+                direction                                  = "Inbound"
+                name                                       = "Allow-Backup-Service"
+                priority                                   = 300
+                protocol                                   = "Tcp"
+                source_address_prefix                      = "10.0.0.0/8"
+                source_address_prefixes                    = []
+                source_application_security_group_ids     = []
+                source_port_range                          = "*"
+                source_port_ranges                         = []
+            },
+          - {
+              - access                                     = "Deny" -> null
+              - description                                = "Deny all other inbound traffic" -> null
+              - destination_address_prefix                 = "*" -> null
+              - destination_address_prefixes               = [] -> null
+              - destination_application_security_group_ids = [] -> null
+              - destination_port_range                     = "*" -> null
+              - destination_port_ranges                    = [] -> null
+              - direction                                  = "Inbound" -> null
+              - name                                       = "Deny-All-Inbound" -> null
+              - priority                                   = 4096 -> null
+              - protocol                                   = "*" -> null
+              - source_address_prefix                      = "*" -> null
+              - source_address_prefixes                    = [] -> null
+              - source_application_security_group_ids     = [] -> null
+              - source_port_range                          = "*" -> null
+              - source_port_ranges                         = [] -> null
+            },
+        ]
+        tags                = {
+            "environment" = "production"
+            "managed-by"  = "terraform"
+            "purpose"     = "backup"
+        }
+    }
+
+  # helm_release.legacy_monitoring will be destroyed
+  - resource "helm_release" "legacy_monitoring" {
+      - atomic                     = false -> null
+      - chart                      = "grafana" -> null
+      - cleanup_on_fail            = false -> null
+      - create_namespace           = true -> null
+      - dependency_update          = false -> null
+      - disable_crd_hooks          = false -> null
+      - disable_openapi_validation = false -> null
+      - disable_webhooks           = false -> null
+      - force_update               = false -> null
+      - id                         = "legacy-monitoring" -> null
+      - lint                       = false -> null
+      - max_history                = 0 -> null
+      - name                       = "legacy-monitoring" -> null
+      - namespace                  = "monitoring" -> null
+      - pass_credentials           = false -> null
+      - recreate_pods              = false -> null
+      - render_subchart_notes      = true -> null
+      - replace                    = false -> null
+      - repository                 = "https://grafana.github.io/helm-charts" -> null
+      - reset_values               = false -> null
+      - reuse_values               = false -> null
+      - skip_crds                  = false -> null
+      - status                     = "deployed" -> null
+      - timeout                    = 600 -> null
+      - verify                     = false -> null
+      - version                    = "6.50.7" -> null
+      - wait                       = true -> null
+      - wait_for_jobs              = false -> null
+
+      - metadata {
+          - app_version = "9.3.6" -> null
+          - chart       = "grafana-6.50.7" -> null
+          - name        = "legacy-monitoring" -> null
+          - namespace   = "monitoring" -> null
+          - revision    = 1 -> null
+          - version     = "6.50.7" -> null
+        }
+
+      - set {
+          - name  = "persistence.enabled" -> null
+          - value = "true" -> null
+        }
+
+      - set {
+          - name  = "persistence.size" -> null
+          - value = "10Gi" -> null
+        }
+
+      - set {
+          - name  = "adminPassword" -> null
+          - value = "admin123" -> null
+        }
+
+      - values = [
+          - <<-EOT
+                datasources:
+                  datasources.yaml:
+                    apiVersion: 1
+                    datasources:
+                    - name: Prometheus
+                      type: prometheus
+                      url: http://prometheus-server:80
+                      access: proxy
+                      isDefault: true
+                
+                dashboardProviders:
+                  dashboardproviders.yaml:
+                    apiVersion: 1
+                    providers:
+                    - name: 'default'
+                      orgId: 1
+                      folder: ''
+                      type: file
+                      disableDeletion: false
+                      editable: true
+                      options:
+                        path: /var/lib/grafana/dashboards/default
+            EOT,
+        ] -> null
+    }
+
+Plan: 2 to add, 5 to change, 2 to destroy.
+
+Changes to Outputs:
+
+  + gcp_instance_ip = (known after apply)
+  + azure_vm_ip = (known after apply)
+  + cross_account_policy_json = (known after apply)
+  - legacy_monitoring_url = "http://legacy-monitoring.monitoring.svc.cluster.local" -> null
+  - old_firewall_rules = {
+      - denied_ports = [
+          - "23",
+          - "135", 
+          - "139",
+          - "445",
+        ]
+      - priority = 1000
+    } -> null
+
+Warning: Deprecated Grafana version
+
+  on monitoring.tf line 45, in resource "helm_release" "legacy_monitoring":
+  45:   version = "6.50.7"
+
+Grafana Helm chart version 6.50.7 is deprecated. Please upgrade to version 7.0.0 or later.
+
+Warning: Insecure firewall rule
+
+  on gcp.tf line 123, in resource "google_compute_firewall" "enterprise_web_firewall":
+ 123:   source_ranges = ["0.0.0.0/0"]
+
+Opening firewall ports to 0.0.0.0/0 is potentially insecure. Consider restricting source ranges.
+
+Warning: Azure NSG rule with low priority
+
+  on azure.tf line 234, in resource "azurerm_network_security_group" "backup_nsg":
+
+NSG rule "Allow-Corporate-SSH" has priority 100. Consider using higher priorities (300+) for custom rules.
+
+Warning: Cross-account IAM trust relationship
+
+Cross-account IAM trust relationships should be carefully reviewed to ensure they follow the principle of least privilege and include appropriate conditions.

@@ -1,7 +1,7 @@
-use crate::{Resource, ActionType};
+use crate::{Resource, ActionType, Change};
 use regex::Regex;
 use std::collections::HashMap;
-use serde_json::Value;
+use serde_json::{Value, json};
 use lazy_static::lazy_static;
 
 pub fn parse_resource_changes(lines: &[&str]) -> Vec<Resource> {
@@ -23,11 +23,20 @@ pub fn parse_resource_changes(lines: &[&str]) -> Vec<Resource> {
             brace_level = 0;
         }
         // Detect start of resource block (+ resource, ~ resource, - resource)
-        else if trimmed.starts_with("+ resource") || 
+        else if current_resource.is_some() && (
+                 trimmed.starts_with("+ resource") || 
                  trimmed.starts_with("~ resource") || 
-                 trimmed.starts_with("- resource") {
+                 trimmed.starts_with("- resource")) {
             in_resource_block = true;
             brace_level = 0;
+            // Count braces on this line too
+            for ch in trimmed.chars() {
+                match ch {
+                    '{' => brace_level += 1,
+                    '}' => brace_level -= 1,
+                    _ => {}
+                }
+            }
         }
         // Track brace levels to know when we're inside the resource
         else if in_resource_block {
@@ -47,7 +56,13 @@ pub fn parse_resource_changes(lines: &[&str]) -> Vec<Resource> {
             // Parse attribute changes within the resource block
             if brace_level > 0 {
                 if let Some(ref mut resource) = current_resource {
-                    parse_attribute_change(trimmed, &mut resource.attributes);
+                    if resource.action == ActionType::Update {
+                        // For updates, parse changes with before/after values
+                        parse_update_change(trimmed, &mut resource.changes);
+                    } else {
+                        // For create/destroy, just parse attributes
+                        parse_attribute_change(trimmed, &mut resource.attributes);
+                    }
                 }
             }
         }
@@ -150,4 +165,154 @@ fn parse_attribute_change(line: &str, attributes: &mut HashMap<String, Value>) {
             attributes.insert(attr_name.to_string(), Value::String("(known after apply)".to_string()));
         }
     }
+}
+
+fn parse_update_change(line: &str, changes: &mut Vec<Change>) {
+    let line = line.trim();
+    
+    // Skip empty lines, comments, and structural lines
+    if line.is_empty() || line.starts_with('#') || line == "{" || line == "}" {
+        return;
+    }
+    
+    // Parse different types of attribute changes for updates:
+    // ~ attribute = "old" -> "new"    (modification)
+    // + attribute = "value"           (addition)
+    // - attribute = "value"           (removal)
+    
+    // Extract the attribute path (handle nested attributes)
+    let mut path = Vec::new();
+    
+    // Remove leading change indicator
+    let (change_type, clean_line) = if line.starts_with("~ ") {
+        ("~", &line[2..])
+    } else if line.starts_with("+ ") {
+        ("+", &line[2..])
+    } else if line.starts_with("- ") {
+        ("-", &line[2..])
+    } else {
+        ("", line)
+    };
+    
+    // Skip if not a change line
+    if change_type.is_empty() {
+        return;
+    }
+    
+    // Handle arrow changes (old -> new)
+    if clean_line.contains(" -> ") && clean_line.contains(" = ") {
+        if let Some(eq_pos) = clean_line.find(" = ") {
+            let attr_name = clean_line[..eq_pos].trim();
+            let values_part = &clean_line[eq_pos + 3..];
+            
+            if let Some(arrow_pos) = values_part.find(" -> ") {
+                let old_value = values_part[..arrow_pos].trim();
+                let new_value = values_part[arrow_pos + 4..].trim();
+                
+                path.push(attr_name.to_string());
+                
+                let change = Change {
+                    path: path.clone(),
+                    before: Some(parse_terraform_value(old_value)),
+                    after: Some(parse_terraform_value(new_value)),
+                    sensitive: false,
+                    computed: false,
+                };
+                
+                changes.push(change);
+            }
+        }
+    }
+    // Handle simple additions
+    else if change_type == "+" && clean_line.contains(" = ") {
+        if let Some(eq_pos) = clean_line.find(" = ") {
+            let attr_name = clean_line[..eq_pos].trim();
+            let value = clean_line[eq_pos + 3..].trim();
+            
+            path.push(attr_name.to_string());
+            
+            let change = Change {
+                path: path.clone(),
+                before: None,
+                after: Some(parse_terraform_value(value)),
+                sensitive: false,
+                computed: value == "(known after apply)",
+            };
+            
+            changes.push(change);
+        }
+    }
+    // Handle simple removals
+    else if change_type == "-" && clean_line.contains(" = ") {
+        if let Some(eq_pos) = clean_line.find(" = ") {
+            let attr_name = clean_line[..eq_pos].trim();
+            let value = clean_line[eq_pos + 3..].trim();
+            
+            path.push(attr_name.to_string());
+            
+            let change = Change {
+                path: path.clone(),
+                before: Some(parse_terraform_value(value)),
+                after: None,
+                sensitive: false,
+                computed: false,
+            };
+            
+            changes.push(change);
+        }
+    }
+}
+
+fn parse_terraform_value(value_str: &str) -> Value {
+    let trimmed = value_str.trim();
+    
+    // Remove quotes if present
+    let unquoted = if (trimmed.starts_with('"') && trimmed.ends_with('"')) ||
+                      (trimmed.starts_with('\'') && trimmed.ends_with('\'')) {
+        &trimmed[1..trimmed.len()-1]
+    } else {
+        trimmed
+    };
+    
+    // Check for special values
+    if unquoted == "(known after apply)" || unquoted == "(sensitive value)" {
+        return json!(unquoted);
+    }
+    
+    // Try to parse as JSON first
+    if let Ok(parsed) = serde_json::from_str::<Value>(trimmed) {
+        return parsed;
+    }
+    
+    // Check for boolean
+    if unquoted == "true" {
+        return json!(true);
+    }
+    if unquoted == "false" {
+        return json!(false);
+    }
+    
+    // Check for null
+    if unquoted == "null" || unquoted == "(null)" {
+        return Value::Null;
+    }
+    
+    // Check for number
+    if let Ok(num) = unquoted.parse::<i64>() {
+        return json!(num);
+    }
+    if let Ok(num) = unquoted.parse::<f64>() {
+        return json!(num);
+    }
+    
+    // Check for array (simple format)
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        // Try to parse as JSON array
+        if let Ok(arr) = serde_json::from_str::<Vec<Value>>(trimmed) {
+            return json!(arr);
+        }
+    }
+    
+    // Default to string
+    json!(unquoted)
 }

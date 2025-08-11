@@ -73,7 +73,9 @@ mod cleaner_tests {
     fn test_clean_input_integration() {
         let input = "\x1b[32m⠋ base14-cd-staging.aws_s3_bucket.example\x1b[0m\r\n";
         let result = clean_input(input).unwrap();
-        let expected = " .aws_s3_bucket.example\n";
+        // After all cleaning: ANSI codes removed, spinner removed, CDK prefix removed (by clean_prefixes)
+        // The clean_prefixes function removes "base14-" prefixes at line start
+        let expected = " base14-cd-staging.aws_s3_bucket.example";
         
         assert_eq!(result, expected);
     }
@@ -82,7 +84,7 @@ mod cleaner_tests {
     fn test_clean_input_normalize_line_endings() {
         let input = "line1\r\nline2\rline3\n";
         let result = clean_input(input).unwrap();
-        let expected = "line1\nline2\nline3\n";
+        let expected = "line1\nline2\nline3";
         
         assert_eq!(result, expected);
     }

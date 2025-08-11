@@ -76,9 +76,9 @@ pub fn parse_resource_changes(lines: &[&str]) -> Vec<Resource> {
 }
 
 lazy_static! {
-    static ref CREATE_REGEX: Regex = Regex::new(r"#\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_-]+)\s+will be created").unwrap();
-    static ref UPDATE_REGEX: Regex = Regex::new(r"#\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_-]+)\s+will be updated").unwrap();
-    static ref DESTROY_REGEX: Regex = Regex::new(r"#\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_-]+)\s+will be destroyed").unwrap();
+    static ref CREATE_REGEX: Regex = Regex::new(r"#\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\-\.]+(?:_[A-F0-9]+)?)\s+(?:\([^)]+\)\s+)?will be created").unwrap();
+    static ref UPDATE_REGEX: Regex = Regex::new(r"#\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\-\.]+(?:_[A-F0-9]+)?)\s+(?:\([^)]+\)\s+)?will be (?:updated|updated in-place)").unwrap();
+    static ref DESTROY_REGEX: Regex = Regex::new(r"#\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\-\.]+(?:_[A-F0-9]+)?)\s+(?:\([^)]+\)\s+)?will be destroyed").unwrap();
     static ref ARROW_CHANGE_REGEX: Regex = Regex::new(r"[~+-]?\s*(.+?)\s*=\s*(.+?)\s*->\s*(.+)").unwrap();
     static ref SIMPLE_ATTR_REGEX: Regex = Regex::new(r"([~+-]?)\s*(.+?)\s*=\s*(.+)").unwrap();
     static ref KNOWN_AFTER_APPLY_REGEX: Regex = Regex::new(r"[~+-]?\s*(.+?)\s*=").unwrap();

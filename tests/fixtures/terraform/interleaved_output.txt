@@ -1,0 +1,41 @@
+s-aws-load-balancer-controller-role]
+base14-aws-use1-eks-scout  aws_iam_role_policy_attachment.scout-use1-apps-vpc-cni-policy: Refreshing state... [id=scout-use1-apps-vpc-cni-role-20250728073308617900000
+010]
+                             ~ update in-place
+
+                           Terraform will perform the following actions:
+base14-aws-use1-eks-scout    # aws_eks_addon.scout-use1-apps-eks-cluster_scout-use1-apps-metrics-server_F073EB1D (scout-use1-apps-eks-cluster/scout-use1-apps-metrics-
+server) will be created
+                             + resource "aws_eks_addon" "scout-use1-apps-eks-cluster_scout-use1-apps-metrics-server_F073EB1D" {
+                                 + addon_name           = "metrics-server"
+                                 + addon_version        = "v0.8.0-eksbuild.1"
+                                 + arn                  = (known after apply)
+                                 + cluster_name         = "scout-use1-apps-eks"
+                                 + configuration_values = (known after apply)
+                                 + created_at           = (known after apply)
+                                   name       = "CHS3p-zinc-backupSinkUserPA"
+                                 ~ roles      = [
+                                     - "scout-use1-apps-clickhouse-sa-role",
+                                   # (3 unchanged attributes hidden)
+                               }
+
+                                 + cluster_name         = "scout-use1-apps-eks"
+                                 + configuration_values = (known after apply)
+                                 + created_at           = (known after apply)
+                                 + id                   = (known after apply)
+                                 + modified_at          = (known after apply)
+                                 + tags_all             = (known after apply)
+                               }
+
+                             # aws_iam_policy_attachment.p-zinc-backup_CHS3p-zinc-backupSinkUserPA_5F158766 (p-zinc-backup/CHS3p-zinc-backupSinkUserPA) will be updated in-place
+                             ~ resource "aws_iam_policy_attachment" "p-zinc-backup_CHS3p-zinc-backupSinkUserPA_5F158766" {
+                                   id         = "CHS3p-zinc-backupSinkUserPA"
+                                   name       = "CHS3p-zinc-backupSinkUserPA"
+                                 ~ roles      = [
+                                     - "scout-use1-apps-clickhouse-sa-role",
+                                       # (1 unchanged element hidden)
+                                   ]
+                                   # (3 unchanged attributes hidden)
+                               }
+
+                           Plan: 1 to add, 1 to change, 0 to destroy.

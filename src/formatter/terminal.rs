@@ -1,6 +1,7 @@
-use crate::{ActionType, Change, TerraformPlan};
+use crate::{ActionType, Change, TerraformPlan, KNOWN_AFTER_APPLY, SENSITIVE_VALUE};
 use colored::*;
-use serde_json::Value;
+use serde_json::{Map, Value};
+use std::collections::{BTreeSet, HashMap};
 
 pub fn format_terminal_output(plan: &TerraformPlan) -> String {
     let mut output = String::new();
@@ -280,11 +281,15 @@ fn format_changes(changes: &[Change], _action: &ActionType) -> String {
                     }
                 }
 
-                output.push_str(&format_modification(
-                    &path_str,
-                    &format_json_value(before, 0),
-                    &format_json_value(after, 0),
-                ));
+                if is_collection(before) || is_collection(after) {
+                    output.push_str(&format_collection_modification(&path_str, before, after));
+                } else {
+                    output.push_str(&format_modification(
+                        &path_str,
+                        &plain_value(before),
+                        &plain_value(after),
+                    ));
+                }
             }
             _ => {
                 // No change or computed values
@@ -322,6 +327,204 @@ fn format_modification(name: &str, before: &str, after: &str) -> String {
         "+".bright_green(),
         truncate(after, 40).bright_green()
     )
+}
+
+fn is_collection(value: &Value) -> bool {
+    value.is_array() || value.is_object()
+}
+
+/// A modified list or map doesn't fit in the side-by-side columns, so list only what changed
+/// inside it, like Terraform does.
+fn format_collection_modification(name: &str, before: &Value, after: &Value) -> String {
+    let mut output = format!("  {} {}\n", "~".bright_yellow().bold(), name.bright_cyan());
+    push_value_diff(&mut output, before, after, 2);
+    output
+}
+
+fn push_value_diff(output: &mut String, before: &Value, after: &Value, depth: usize) {
+    match (before, after) {
+        (Value::Array(before), Value::Array(after)) => {
+            push_array_diff(output, before, after, depth)
+        }
+        (Value::Object(before), Value::Object(after)) => {
+            push_object_diff(output, before, after, depth)
+        }
+        _ => {
+            push_value_lines(output, Sign::Remove, None, before, depth);
+            push_value_lines(output, Sign::Add, None, after, depth);
+        }
+    }
+}
+
+/// Compares elements by value rather than position: most long lists in plans are sets (CIDRs,
+/// IDs, ...), where only the added and removed elements are of interest.
+fn push_array_diff(output: &mut String, before: &[Value], after: &[Value], depth: usize) {
+    // The text parser keeps Terraform's "(N unchanged elements hidden)" lines as elements
+    let hidden = |items: &[Value]| items.iter().filter_map(hidden_element_count).sum::<usize>();
+    let hidden = hidden(before).max(hidden(after));
+    let shown = |items: &[Value]| -> Vec<Value> {
+        items
+            .iter()
+            .filter(|v| hidden_element_count(v).is_none())
+            .cloned()
+            .collect()
+    };
+    let (before, after) = (shown(before), shown(after));
+
+    // Elements of `items` that have no counterpart in `other`, matching duplicates one-to-one
+    fn unmatched<'a>(items: &'a [Value], other: &[Value]) -> Vec<&'a Value> {
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for item in other {
+            *counts.entry(item.to_string()).or_default() += 1;
+        }
+        items
+            .iter()
+            .filter(|item| match counts.get_mut(&item.to_string()) {
+                Some(count) if *count > 0 => {
+                    *count -= 1;
+                    false
+                }
+                _ => true,
+            })
+            .collect()
+    }
+    let removed = unmatched(&before, &after);
+    let added = unmatched(&after, &before);
+    let unchanged = before.len() - removed.len() + hidden;
+
+    for item in removed {
+        push_value_lines(output, Sign::Remove, None, item, depth);
+    }
+    for item in added {
+        push_value_lines(output, Sign::Add, None, item, depth);
+    }
+    if unchanged > 0 {
+        let noun = if unchanged == 1 {
+            "element"
+        } else {
+            "elements"
+        };
+        push_hidden_line(output, unchanged, noun, depth);
+    }
+}
+
+fn push_object_diff(
+    output: &mut String,
+    before: &Map<String, Value>,
+    after: &Map<String, Value>,
+    depth: usize,
+) {
+    let keys: BTreeSet<&String> = before.keys().chain(after.keys()).collect();
+    let mut unchanged = 0;
+    for key in keys {
+        match (before.get(key), after.get(key)) {
+            (Some(b), Some(a)) if b == a => unchanged += 1,
+            (Some(b), Some(a)) if is_collection(b) || is_collection(a) => {
+                output.push_str(&format!(
+                    "{}{} {}\n",
+                    "  ".repeat(depth),
+                    "~".bright_yellow().bold(),
+                    key.bright_cyan()
+                ));
+                push_value_diff(output, b, a, depth + 1);
+            }
+            (Some(b), Some(a)) => output.push_str(&format!(
+                "{}{} {} = {} {} {}\n",
+                "  ".repeat(depth),
+                "~".bright_yellow().bold(),
+                key.bright_cyan(),
+                plain_value(b).bright_red(),
+                "→".dimmed(),
+                plain_value(a).bright_green()
+            )),
+            (Some(b), None) => push_value_lines(output, Sign::Remove, Some(key), b, depth),
+            (None, Some(a)) => push_value_lines(output, Sign::Add, Some(key), a, depth),
+            (None, None) => {}
+        }
+    }
+    if unchanged > 0 {
+        let noun = if unchanged == 1 {
+            "attribute"
+        } else {
+            "attributes"
+        };
+        push_hidden_line(output, unchanged, noun, depth);
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Sign {
+    Add,
+    Remove,
+}
+
+/// One added or removed value; collections are pretty-printed with every line colored on its
+/// own, so that a color never spans a line break.
+fn push_value_lines(
+    output: &mut String,
+    sign: Sign,
+    key: Option<&str>,
+    value: &Value,
+    depth: usize,
+) {
+    let text = match value {
+        Value::Array(_) | Value::Object(_) => {
+            serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string())
+        }
+        _ => plain_value(value),
+    };
+    let text = match key {
+        Some(key) => format!("{} = {}", key, text),
+        None => text,
+    };
+    let indent = "  ".repeat(depth);
+    for (i, line) in text.lines().enumerate() {
+        let marker = if i == 0 {
+            match sign {
+                Sign::Add => "+".bright_green().bold(),
+                Sign::Remove => "-".bright_red().bold(),
+            }
+        } else {
+            " ".normal()
+        };
+        let line = match sign {
+            Sign::Add => line.bright_green(),
+            Sign::Remove => line.bright_red(),
+        };
+        output.push_str(&format!("{}{} {}\n", indent, marker, line));
+    }
+}
+
+fn push_hidden_line(output: &mut String, count: usize, noun: &str, depth: usize) {
+    output.push_str(&format!(
+        "{}  {}\n",
+        "  ".repeat(depth),
+        format!("# ({} unchanged {} hidden)", count, noun).dimmed()
+    ));
+}
+
+/// The count from a "(N unchanged elements hidden)" placeholder element.
+fn hidden_element_count(value: &Value) -> Option<usize> {
+    let (count, rest) = value
+        .as_str()?
+        .strip_prefix('(')?
+        .strip_suffix(')')?
+        .split_once(' ')?;
+    matches!(
+        rest,
+        "unchanged element hidden" | "unchanged elements hidden"
+    )
+    .then(|| count.parse().ok())
+    .flatten()
+}
+
+/// A scalar without color codes, so it can be safely truncated and colored by the caller.
+fn plain_value(value: &Value) -> String {
+    match value {
+        Value::String(s) if s == KNOWN_AFTER_APPLY || s == SENSITIVE_VALUE => s.clone(),
+        Value::String(s) => format!("\"{}\"", s),
+        other => other.to_string(),
+    }
 }
 
 /// Shorten to at most `max_width` characters, cutting on a char boundary.

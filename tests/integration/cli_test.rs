@@ -132,6 +132,30 @@ Plan: 1 to add, 0 to change, 0 to destroy.
     }
 
     #[test]
+    fn test_cli_invalid_filter_fails() {
+        let plan_content = "Plan: 1 to add, 1 to change, 1 to destroy.";
+        let file = create_temp_file_with_content(plan_content);
+
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        cmd.arg(file.path())
+            .args(["--filter", "create,bogus"])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("invalid value 'bogus'"));
+    }
+
+    #[test]
+    fn test_cli_help_lists_filters() {
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        cmd.arg("-h")
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(
+                "create, update, destroy, replace, read, noop",
+            ));
+    }
+
+    #[test]
     fn test_cli_verbose_mode() {
         let plan_content = "Plan: 1 to add, 0 to change, 0 to destroy.";
         let file = create_temp_file_with_content(plan_content);

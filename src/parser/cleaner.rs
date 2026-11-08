@@ -1,5 +1,11 @@
 use crate::Result;
+use lazy_static::lazy_static;
 use regex::Regex;
+
+lazy_static! {
+    // Stack name prefixes like "base14-aws-use1-eks-scout"
+    static ref PREFIX_REGEX: Regex = Regex::new(r"^base14-[a-zA-Z0-9-]+\s+").unwrap();
+}
 
 pub fn clean_input(input: &str) -> Result<String> {
     let mut cleaned = input.to_string();
@@ -78,8 +84,7 @@ pub fn clean_prefixes(input: &str) -> String {
         let mut cleaned = line.to_string();
 
         // Remove common prefixes like "base14-aws-use1-eks-scout" or similar
-        let prefix_regex = Regex::new(r"^base14-[a-zA-Z0-9-]+\s+").unwrap();
-        cleaned = prefix_regex.replace(&cleaned, "").to_string();
+        cleaned = PREFIX_REGEX.replace(&cleaned, "").to_string();
 
         // Also handle lines that are indented with spaces but have content
         // Keep the indentation but clean the prefix
@@ -87,7 +92,7 @@ pub fn clean_prefixes(input: &str) -> String {
             let indent = cleaned.len() - cleaned.trim_start().len();
             let spaces = " ".repeat(indent);
             let content = cleaned.trim_start();
-            let content_cleaned = prefix_regex.replace(content, "").to_string();
+            let content_cleaned = PREFIX_REGEX.replace(content, "").to_string();
             cleaned = format!("{}{}", spaces, content_cleaned);
         }
 

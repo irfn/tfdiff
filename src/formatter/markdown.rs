@@ -40,6 +40,7 @@ pub fn format_markdown_output(plan: &TerraformPlan) -> String {
                 ActionType::Create => ("✅", "CREATE"),
                 ActionType::Update => ("🔄", "UPDATE"),
                 ActionType::Destroy => ("❌", "DESTROY"),
+                ActionType::Replace => ("♻️", "REPLACE"),
                 ActionType::Read => ("📖", "READ"),
                 ActionType::NoOp => ("⭕", "NO-OP"),
             };
@@ -53,6 +54,20 @@ pub fn format_markdown_output(plan: &TerraformPlan) -> String {
                 md.push_str("```json\n");
                 for (key, value) in &resource.attributes {
                     md.push_str(&format!("{}: {}\n", key, value));
+                }
+                md.push_str("```\n\n");
+            }
+
+            if !resource.changes.is_empty() {
+                md.push_str("```diff\n");
+                for change in &resource.changes {
+                    let path = change.path.join(".");
+                    if let Some(before) = &change.before {
+                        md.push_str(&format!("- {}: {}\n", path, before));
+                    }
+                    if let Some(after) = &change.after {
+                        md.push_str(&format!("+ {}: {}\n", path, after));
+                    }
                 }
                 md.push_str("```\n\n");
             }

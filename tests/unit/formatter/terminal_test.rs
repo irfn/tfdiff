@@ -170,4 +170,80 @@ mod terminal_formatter_tests {
         assert!(clean_ansi_codes(&formatted).contains("1 to destroy"));
         assert!(!clean_ansi_codes(&formatted).contains("to read"));
     }
+
+    fn update_resource(before: serde_json::Value, after: serde_json::Value) -> Resource {
+        let mut resource = sample_update_resource();
+        resource.changes = vec![Change {
+            path: vec!["ip_addresses".to_string()],
+            before: Some(before),
+            after: Some(after),
+            sensitive: false,
+            computed: false,
+        }];
+        resource
+    }
+
+    #[test]
+    fn test_format_resource_update_long_list_shows_only_changed_elements() {
+        let before: Vec<String> = (0..283).map(|i| format!("10.0.0.{}/32", i)).collect();
+        let mut after = before.clone();
+        after.insert(10, "34.193.202.22/32".to_string());
+        let formatted = format_resource(&update_resource(
+            serde_json::json!(before),
+            serde_json::json!(after),
+        ));
+        let plain = clean_ansi_codes(&formatted);
+
+        assert!(plain.contains("  ~ ip_addresses\n"));
+        assert!(plain.contains("    + \"34.193.202.22/32\"\n"));
+        assert!(plain.contains("# (283 unchanged elements hidden)"));
+        assert!(!plain.contains("10.0.0.1/32"));
+        // Every line opens and closes its own colors
+        for line in formatted.lines() {
+            assert_eq!(line.matches("\x1b[").count() % 2, 0, "{:?}", line);
+        }
+    }
+
+    #[test]
+    fn test_format_resource_update_list_with_hidden_elements_placeholder() {
+        // As produced by the text parser from Terraform's "# (283 unchanged elements hidden)"
+        let formatted = format_resource(&update_resource(
+            serde_json::json!(["(283 unchanged elements hidden)"]),
+            serde_json::json!(["34.193.202.22/32", "(283 unchanged elements hidden)"]),
+        ));
+        let plain = clean_ansi_codes(&formatted);
+
+        assert!(plain.contains("    + \"34.193.202.22/32\"\n"));
+        assert!(plain.contains("# (283 unchanged elements hidden)"));
+        assert!(!plain.contains("- "));
+    }
+
+    #[test]
+    fn test_format_resource_update_map_shows_changed_keys() {
+        let formatted = format_resource(&update_resource(
+            serde_json::json!({"env": "dev", "owner": "a", "gone": "x"}),
+            serde_json::json!({"env": "prod", "owner": "a", "new": "y"}),
+        ));
+        let plain = clean_ansi_codes(&formatted);
+
+        assert!(plain.contains("~ env = \"dev\" → \"prod\""));
+        assert!(plain.contains("- gone = \"x\""));
+        assert!(plain.contains("+ new = \"y\""));
+        assert!(plain.contains("# (1 unchanged attribute hidden)"));
+    }
+
+    #[test]
+    fn test_format_resource_update_scalar_columns_align() {
+        colored::control::set_override(true);
+        let formatted = format_resource(&update_resource(
+            serde_json::json!(false),
+            serde_json::json!(true),
+        ));
+        colored::control::unset_override();
+        let plain = clean_ansi_codes(&formatted);
+
+        // Padding must not count the color codes, and values get the diff colors only
+        assert!(plain.contains(&format!("    ─ {:<40} │ + true\n", "false")));
+        assert!(!formatted.contains("\x1b[95m"));
+    }
 }

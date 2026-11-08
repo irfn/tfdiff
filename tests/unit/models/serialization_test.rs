@@ -23,6 +23,7 @@ mod models_serialization_tests {
             ActionType::Create,
             ActionType::Update,
             ActionType::Destroy,
+            ActionType::Replace,
             ActionType::Read,
             ActionType::NoOp,
         ];

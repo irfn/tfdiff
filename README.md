@@ -28,6 +28,7 @@ make help
 - 🌐 **Interactive browser view** with side-by-side diffs, filtering, and search
 - 📄 **Multiple output formats**: Terminal, JSON, HTML, Markdown  
 - 🔍 **Smart parsing** that understands Terraform plan/apply outputs completely
+- 🧾 **JSON plan input** - reads `terraform show -json` output directly, with sensitive values masked
 - 🧹 **Intelligent input cleaning** removes ANSI codes, spinners, CDK prefixes
 - ⚡ **Blazing fast performance** - processes 10MB+ outputs in <100ms
 - 🔬 **Detailed resource diffs** showing exact attribute changes
@@ -69,11 +70,34 @@ terraform plan | tfdiff
 # Read from file
 tfdiff plan.txt
 
+# Read the JSON representation of a saved plan
+terraform plan -out=plan.tfplan
+terraform show -json plan.tfplan | tfdiff
+
 # Different output formats
 tfdiff plan.txt --format json
 tfdiff plan.txt --format html > report.html
 tfdiff plan.txt --format markdown > plan.md
 ```
+
+### Input Formats
+tfdiff detects the input format automatically:
+
+| Input | How to produce it |
+|-------|-------------------|
+| Human-readable plan/apply output | `terraform plan`, `terraform apply`, `terraform show plan.tfplan` |
+| JSON plan | `terraform show -json plan.tfplan` |
+
+JSON is the most complete input:
+- It includes every resource change: resources with `count`/`for_each` keys, data sources read during apply, and replacements.
+- It includes the provider of each resource and the Terraform version.
+- The text parser does not yet recognise indexed resources, data source reads or replacements.
+
+`terraform show -json` writes sensitive values (including sensitive variables) in plain text and only marks where they are. tfdiff masks every value marked sensitive as `(sensitive value)` in all output formats, and does not output the `variables` section at all.
+
+Notes:
+- tfdiff reads the JSON output, not the binary plan file itself. `terraform show -json` needs the initialized working directory that created the plan, because it loads the provider schemas.
+- The streaming output of `terraform plan -json` is not a plan document. tfdiff only reads the summary from it.
 
 ### 🌐 Interactive Browser Mode
 The browser mode opens a beautiful, interactive HTML view in your default browser:
@@ -112,7 +136,7 @@ tfdiff plan.txt --quiet
 ```bash
 # Review a large infrastructure change in browser
 terraform plan -out=plan.tfplan
-terraform show plan.tfplan | tfdiff --browser
+terraform show -json plan.tfplan | tfdiff --browser
 
 # Generate HTML report for team review
 terraform plan | tfdiff --format html > infrastructure-changes.html
@@ -235,8 +259,9 @@ tfdiff/
 │   ├── lib.rs               # Library root
 │   ├── parser/              # Terraform output parsing
 │   │   ├── cleaner.rs       # Input cleaning
-│   │   ├── terraform.rs     # Plan/apply parsing
-│   │   └── diff.rs          # Resource diff extraction
+│   │   ├── terraform.rs     # Plan/apply parsing (entry point, detects JSON input)
+│   │   ├── diff.rs          # Resource diff extraction from text output
+│   │   └── json_plan.rs     # `terraform show -json` plan parsing
 │   ├── formatter/           # Output formatting
 │   │   ├── terminal.rs      # Terminal output
 │   │   ├── json.rs          # JSON export
@@ -334,7 +359,7 @@ tfdiff [INPUT] [OPTIONS]
 ```
 
 ### Arguments
-- `INPUT` - Input file path (optional, defaults to stdin)
+- `INPUT` - Input file path (optional, defaults to stdin). Either Terraform's human-readable output or `terraform show -json` plan output
 
 ### Options
 
@@ -346,7 +371,7 @@ tfdiff [INPUT] [OPTIONS]
 - `--verbose` - Verbose output with extra details
 
 #### Filtering
-- `--filter <ACTIONS>` - Comma-separated list of actions to show: `create`, `update`, `destroy`, `read`, `noop`
+- `--filter <ACTIONS>` - Comma-separated list of actions to show: `create`, `update`, `destroy`, `replace`, `read`, `noop`
 
 #### Web Mode (Planned)
 - `--web` - Start web server mode
@@ -509,6 +534,7 @@ Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 - ✅ **Performance**: Sub-100ms parsing with lazy_static optimization
 - ✅ **Testing**: 127 comprehensive tests with 97% coverage
 - ✅ **Error Handling**: Graceful degradation for malformed inputs
+- ✅ **JSON input**: `terraform show -json` plans, including replacements and sensitive value masking
 - 🚧 **Phase 4**: File watching and real-time updates (planned)
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed release history.

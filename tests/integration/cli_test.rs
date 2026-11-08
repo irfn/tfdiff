@@ -1,4 +1,5 @@
-use assert_cmd::Command;
+use crate::common::fixtures::{fixture_path, load_fixture};
+use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 use std::io::Write;
 use tempfile::NamedTempFile;
@@ -15,7 +16,7 @@ mod cli_integration_tests {
 
     #[test]
     fn test_cli_help() {
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg("--help")
             .assert()
             .success()
@@ -25,7 +26,7 @@ mod cli_integration_tests {
 
     #[test]
     fn test_cli_version() {
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg("--version")
             .assert()
             .success()
@@ -48,7 +49,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .assert()
             .success()
@@ -61,7 +62,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 2 to add, 1 to change, 0 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .arg("--format")
             .arg("json")
@@ -76,7 +77,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 1 to add, 0 to change, 1 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .arg("--format")
             .arg("html")
@@ -93,7 +94,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 0 to add, 2 to change, 0 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .arg("--format")
             .arg("markdown")
@@ -107,7 +108,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 1 to add, 1 to change, 1 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .arg("--web")
             .arg("--port")
@@ -122,7 +123,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 1 to add, 1 to change, 1 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .arg("--filter")
             .arg("create,update")
@@ -131,11 +132,35 @@ Plan: 1 to add, 0 to change, 0 to destroy.
     }
 
     #[test]
+    fn test_cli_invalid_filter_fails() {
+        let plan_content = "Plan: 1 to add, 1 to change, 1 to destroy.";
+        let file = create_temp_file_with_content(plan_content);
+
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        cmd.arg(file.path())
+            .args(["--filter", "create,bogus"])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("invalid value 'bogus'"));
+    }
+
+    #[test]
+    fn test_cli_help_lists_filters() {
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        cmd.arg("-h")
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(
+                "create, update, destroy, replace, read, noop",
+            ));
+    }
+
+    #[test]
     fn test_cli_verbose_mode() {
         let plan_content = "Plan: 1 to add, 0 to change, 0 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path()).arg("--verbose").assert().success();
     }
 
@@ -144,7 +169,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 1 to add, 0 to change, 0 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path()).arg("--quiet").assert().success();
     }
 
@@ -153,7 +178,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 5 to add, 3 to change, 2 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path()).arg("--summary").assert().success();
     }
 
@@ -162,13 +187,13 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let plan_content = "Plan: 1 to add, 0 to change, 0 to destroy.";
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path()).arg("--watch").assert().success();
     }
 
     #[test]
     fn test_cli_nonexistent_file() {
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg("/nonexistent/file.txt")
             .assert()
             .failure() // File not found should return error
@@ -177,7 +202,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 
     #[test]
     fn test_cli_stdin_mode() {
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.write_stdin("Plan: 0 to add, 0 to change, 0 to destroy.")
             .assert()
             .success()
@@ -186,13 +211,13 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 
     #[test]
     fn test_cli_invalid_format() {
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg("--format").arg("invalid").assert().failure();
     }
 
     #[test]
     fn test_cli_invalid_port() {
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg("--port").arg("invalid").assert().failure();
     }
 
@@ -202,7 +227,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         let file = create_temp_file_with_content(plan_content);
 
         // Quiet and verbose should both be accepted (implementation decides precedence)
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .arg("--quiet")
             .arg("--verbose")
@@ -225,7 +250,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
         "#;
         let file = create_temp_file_with_content(plan_content);
 
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg(file.path())
             .arg("--browser")
             .assert()
@@ -237,7 +262,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 
     #[test]
     fn test_cli_browser_flag_available() {
-        let mut cmd = Command::cargo_bin("tfdiff").unwrap();
+        let mut cmd = cargo_bin_cmd!("tfdiff");
         cmd.arg("--help")
             .assert()
             .success()
@@ -245,5 +270,59 @@ Plan: 1 to add, 0 to change, 0 to destroy.
             .stdout(predicate::str::contains(
                 "Generate HTML and open in browser",
             ));
+    }
+
+    const JSON_PLAN_FIXTURE: &str = "terraform/show_json_plan.json";
+
+    #[test]
+    fn test_cli_json_plan_file_input() {
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        cmd.arg(fixture_path(JSON_PLAN_FIXTURE))
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("module.app.aws_instance.web[0]"))
+            .stdout(predicate::str::contains("REPLACE"))
+            .stdout(predicate::str::contains("CREATE-SECRET-456").not());
+    }
+
+    #[test]
+    fn test_cli_json_plan_stdin() {
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        cmd.write_stdin(load_fixture(JSON_PLAN_FIXTURE))
+            .arg("--summary")
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(
+                "Summary: 3 to add, 1 to change, 3 to destroy",
+            ));
+    }
+
+    #[test]
+    fn test_cli_json_plan_filter_replace() {
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        let output = cmd
+            .arg(fixture_path(JSON_PLAN_FIXTURE))
+            .args(["--format", "json", "--filter", "replace"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+
+        let plan: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        let ids: Vec<&str> = plan["resources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, vec!["aws_instance.db[\"primary\"]", "aws_lb.front"]);
+    }
+
+    #[test]
+    fn test_cli_invalid_json_input() {
+        let mut cmd = cargo_bin_cmd!("tfdiff");
+        cmd.write_stdin("{ not json")
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("terraform show -json"));
     }
 }

@@ -273,21 +273,10 @@ fn parse_update_change(line: &str, changes: &mut Vec<Change>) {
     // Extract the attribute path (handle nested attributes)
     let mut path = Vec::new();
 
-    // Remove leading change indicator
-    let (change_type, clean_line) = if line.starts_with("~ ") {
-        ("~", &line[2..])
-    } else if line.starts_with("+ ") {
-        ("+", &line[2..])
-    } else if line.starts_with("- ") {
-        ("-", &line[2..])
-    } else {
-        ("", line)
-    };
-
-    // Skip if not a change line
-    if change_type.is_empty() {
+    // Remove leading change indicator; skip if not a change line
+    let Some((change_type, clean_line)) = split_change_indicator(line) else {
         return;
-    }
+    };
 
     // Handle arrow changes (old -> new)
     if clean_line.contains(" -> ") && clean_line.contains(" = ") {
@@ -353,6 +342,14 @@ fn parse_update_change(line: &str, changes: &mut Vec<Change>) {
     }
 }
 
+/// Split a leading "~ ", "+ " or "- " change indicator from a diff line.
+fn split_change_indicator(line: &str) -> Option<(&'static str, &str)> {
+    ["~", "+", "-"].into_iter().find_map(|indicator| {
+        let rest = line.strip_prefix(indicator)?.strip_prefix(' ')?;
+        Some((indicator, rest))
+    })
+}
+
 /// Detect if a line starts a multi-line array change.
 /// Returns (change_type, attr_name) if it does.
 /// Examples:
@@ -360,16 +357,7 @@ fn parse_update_change(line: &str, changes: &mut Vec<Change>) {
 ///   + new_attr = [
 ///   - old_attr = [
 fn detect_multiline_array_start(line: &str) -> Option<(String, String)> {
-    let trimmed = line.trim();
-    let (change_type, clean) = if trimmed.starts_with("~ ") {
-        ("~", &trimmed[2..])
-    } else if trimmed.starts_with("+ ") {
-        ("+", &trimmed[2..])
-    } else if trimmed.starts_with("- ") {
-        ("-", &trimmed[2..])
-    } else {
-        return None;
-    };
+    let (change_type, clean) = split_change_indicator(line.trim())?;
 
     if let Some(eq_pos) = clean.find(" = ") {
         let value_part = clean[eq_pos + 3..].trim();
@@ -415,13 +403,13 @@ fn flush_multiline_array_change(
         }
 
         // Parse removed elements within the array
-        if trimmed.starts_with("- ") {
-            let value = trimmed[2..].trim().trim_end_matches(',');
+        if let Some(value) = trimmed.strip_prefix("- ") {
+            let value = value.trim().trim_end_matches(',');
             removed_elements.push(parse_terraform_value(value));
         }
         // Parse added elements within the array
-        else if trimmed.starts_with("+ ") {
-            let value = trimmed[2..].trim().trim_end_matches(',');
+        else if let Some(value) = trimmed.strip_prefix("+ ") {
+            let value = value.trim().trim_end_matches(',');
             added_elements.push(parse_terraform_value(value));
         }
         // Plain elements (unchanged, shown for context)
@@ -507,7 +495,7 @@ fn parse_terraform_value(value_str: &str) -> Value {
     };
 
     // Check for special values
-    if unquoted == "(known after apply)" || unquoted == "(sensitive value)" {
+    if unquoted == crate::KNOWN_AFTER_APPLY || unquoted == crate::SENSITIVE_VALUE {
         return json!(unquoted);
     }
 

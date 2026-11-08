@@ -3,6 +3,12 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 pub fn parse_terraform_output(input: &str) -> Result<TerraformPlan> {
+    // Some Windows tools prefix UTF-8 output with a byte order mark
+    let input = input.trim_start_matches('\u{feff}');
+    if crate::parser::is_json_input(input) {
+        return crate::parser::parse_terraform_json(input);
+    }
+
     let cleaned = crate::parser::clean_input(input)?;
     let lines: Vec<&str> = cleaned.lines().collect();
 

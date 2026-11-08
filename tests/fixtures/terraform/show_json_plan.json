@@ -1,0 +1,159 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.9.5",
+  "variables": {
+    "db_password": { "value": "VARIABLE-SECRET-123" },
+    "region": { "value": "eu-west-1" }
+  },
+  "planned_values": { "root_module": {} },
+  "resource_changes": [
+    {
+      "address": "aws_db_instance.main",
+      "mode": "managed",
+      "type": "aws_db_instance",
+      "name": "main",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create"],
+        "before": null,
+        "after": {
+          "engine": "postgres",
+          "allocated_storage": 20,
+          "deletion_protection": true,
+          "password": "CREATE-SECRET-456",
+          "parameter_group_name": null,
+          "tags": { "Name": "main-db", "Team": "platform" }
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true,
+          "tags": {},
+          "tags_all": { "Name": true }
+        },
+        "before_sensitive": false,
+        "after_sensitive": { "password": true, "tags": {} }
+      }
+    },
+    {
+      "address": "module.app.aws_instance.web[0]",
+      "module_address": "module.app",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web",
+      "index": 0,
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["update"],
+        "before": {
+          "id": "i-0123456789abcdef0",
+          "admin_password": "BECAME-SENSITIVE-OLD",
+          "instance_type": "t3.micro",
+          "user_data": "UPDATE-OLD-SECRET",
+          "public_ip": "203.0.113.10",
+          "monitoring": false,
+          "tags": { "Name": "web", "Env": "staging" },
+          "security_groups": ["sg-1", "sg-2"]
+        },
+        "after": {
+          "id": "i-0123456789abcdef0",
+          "admin_password": "BECAME-SENSITIVE-NEW",
+          "instance_type": "t3.small",
+          "user_data": "UPDATE-NEW-SECRET",
+          "monitoring": null,
+          "tags": { "Name": "web", "Env": "production" },
+          "security_groups": ["sg-1", "sg-2"]
+        },
+        "after_unknown": { "public_ip": true, "tags": {}, "security_groups": [false, false] },
+        "before_sensitive": { "user_data": true, "tags": {} },
+        "after_sensitive": { "user_data": true, "admin_password": true, "tags": {} }
+      }
+    },
+    {
+      "address": "aws_iam_user.legacy",
+      "mode": "managed",
+      "type": "aws_iam_user",
+      "name": "legacy",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["delete"],
+        "before": {
+          "name": "legacy-user",
+          "access_keys": ["AKIAEXAMPLE", "DELETE-SECRET-789"],
+          "path": "/"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": { "access_keys": [false, true] },
+        "after_sensitive": false
+      }
+    },
+    {
+      "address": "aws_instance.db[\"primary\"]",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "db",
+      "index": "primary",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "action_reason": "replace_because_cannot_update",
+      "change": {
+        "actions": ["delete", "create"],
+        "before": { "id": "i-0aaaaaaaaaaaaaaaa", "ami": "ami-old", "instance_type": "t3.large" },
+        "after": { "ami": "ami-new", "instance_type": "t3.large" },
+        "after_unknown": { "id": true },
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "replace_paths": [["ami"]]
+      }
+    },
+    {
+      "address": "aws_lb.front",
+      "mode": "managed",
+      "type": "aws_lb",
+      "name": "front",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["create", "delete"],
+        "before": { "name": "front-old" },
+        "after": { "name": "front-new" },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "data.http.health",
+      "mode": "data",
+      "type": "http",
+      "name": "health",
+      "provider_name": "registry.terraform.io/hashicorp/http",
+      "action_reason": "read_because_config_unknown",
+      "change": {
+        "actions": ["read"],
+        "before": null,
+        "after": { "url": "https://example.com/health", "request_headers": null },
+        "after_unknown": { "body": true, "id": true },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_s3_bucket.unchanged",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "unchanged",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": ["no-op"],
+        "before": { "bucket": "unchanged-bucket" },
+        "after": { "bucket": "unchanged-bucket" },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    }
+  ],
+  "timestamp": "2026-10-31T12:00:00Z",
+  "applyable": true,
+  "complete": true,
+  "errored": false
+}

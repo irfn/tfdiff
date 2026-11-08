@@ -69,16 +69,19 @@ pub mod assertions {
         );
     }
 
+    pub fn find_resource<'a>(plan: &'a TerraformPlan, resource_id: &str) -> &'a Resource {
+        plan.resources
+            .iter()
+            .find(|r| r.id == resource_id)
+            .unwrap_or_else(|| panic!("Resource {} not found", resource_id))
+    }
+
     pub fn assert_resource_action(
         plan: &TerraformPlan,
         resource_id: &str,
         expected_action: ActionType,
     ) {
-        let resource = plan
-            .resources
-            .iter()
-            .find(|r| r.id == resource_id)
-            .unwrap_or_else(|| panic!("Resource {} not found", resource_id));
+        let resource = find_resource(plan, resource_id);
 
         assert_eq!(
             resource.action, expected_action,

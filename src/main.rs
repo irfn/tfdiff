@@ -20,9 +20,9 @@ struct Cli {
     #[arg(short, long, value_enum, default_value = "terminal")]
     format: OutputFormat,
 
-    /// Filter by action type
-    #[arg(short = 'F', long, value_delimiter = ',')]
-    filter: Vec<String>,
+    /// Filter by action type (comma-separated)
+    #[arg(short = 'F', long, value_enum, value_delimiter = ',')]
+    filter: Vec<FilterAction>,
 
     /// Launch web UI
     #[arg(short, long)]
@@ -59,6 +59,31 @@ enum OutputFormat {
     Json,
     Html,
     Markdown,
+}
+
+#[derive(clap::ValueEnum, Clone, Copy, Debug, PartialEq)]
+enum FilterAction {
+    Create,
+    Update,
+    Destroy,
+    Replace,
+    Read,
+    Noop,
+}
+
+impl FilterAction {
+    fn matches(self, action: &tfdiff::ActionType) -> bool {
+        use tfdiff::ActionType;
+        matches!(
+            (self, action),
+            (FilterAction::Create, ActionType::Create)
+                | (FilterAction::Update, ActionType::Update)
+                | (FilterAction::Destroy, ActionType::Destroy)
+                | (FilterAction::Replace, ActionType::Replace)
+                | (FilterAction::Read, ActionType::Read)
+                | (FilterAction::Noop, ActionType::NoOp)
+        )
+    }
 }
 
 fn open_in_browser(plan: &tfdiff::TerraformPlan) -> Result<()> {
@@ -141,16 +166,9 @@ fn main() -> Result<()> {
     let mut filtered_plan = plan.clone();
     if !cli.filter.is_empty() {
         // Filter resources based on action type
-        filtered_plan.resources.retain(|r| {
-            let action_str = match r.action {
-                tfdiff::ActionType::Create => "create",
-                tfdiff::ActionType::Update => "update",
-                tfdiff::ActionType::Destroy => "destroy",
-                tfdiff::ActionType::Read => "read",
-                tfdiff::ActionType::NoOp => "noop",
-            };
-            cli.filter.iter().any(|f| f == action_str)
-        });
+        filtered_plan
+            .resources
+            .retain(|r| cli.filter.iter().any(|f| f.matches(&r.action)));
     }
 
     // Format and output based on selected format

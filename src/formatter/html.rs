@@ -217,6 +217,7 @@ pub fn format_html_output(plan: &TerraformPlan) -> String {
         
         .action-update { background-color: #d29922; color: #0d1117; }
         .action-destroy { background-color: #f85149; color: #ffffff; }
+        .action-replace { background-color: #a371f7; color: #0d1117; }
         .action-read { background-color: #58a6ff; color: #0d1117; }
         
         .resource-name {
@@ -497,6 +498,7 @@ pub fn format_html_output(plan: &TerraformPlan) -> String {
             ActionType::Create => ("action-create", "CREATE"),
             ActionType::Update => ("action-update", "UPDATE"),
             ActionType::Destroy => ("action-destroy", "DESTROY"),
+            ActionType::Replace => ("action-replace", "REPLACE"),
             ActionType::Read => ("action-read", "READ"),
             ActionType::NoOp => ("action-read", "NO-OP"),
         };
@@ -513,19 +515,20 @@ pub fn format_html_output(plan: &TerraformPlan) -> String {
             <div class="resource-header">
                 <span class="action-badge {}">{}</span>
                 <span class="resource-name">{}</span>"#,
-            new_resource_class, action_class, action_text, resource.id
+            new_resource_class,
+            action_class,
+            action_text,
+            html_escape(&resource.id)
         ));
 
         // Add resource ID if it's an update
         if resource.action == ActionType::Update && !resource.attributes.is_empty() {
-            if let Some(id_value) = resource.attributes.get("id") {
-                if let Value::String(id_str) = id_value {
-                    html.push_str(&format!(
-                        r#"
+            if let Some(Value::String(id_str)) = resource.attributes.get("id") {
+                html.push_str(&format!(
+                    r#"
                 <span class="resource-id">id: {}</span>"#,
-                        id_str
-                    ));
-                }
+                    html_escape(id_str)
+                ));
             }
         }
 
@@ -536,8 +539,8 @@ pub fn format_html_output(plan: &TerraformPlan) -> String {
 
         // Format resource content based on action type
         match resource.action {
-            ActionType::Update => {
-                // For updates, show side-by-side diff
+            ActionType::Update | ActionType::Replace => {
+                // For updates and replacements, show side-by-side diff
                 html.push_str(&format_update_diff(resource));
             }
             _ => {
@@ -561,7 +564,7 @@ pub fn format_html_output(plan: &TerraformPlan) -> String {
                 <span class="action-badge action-read">READ</span>
                 <span class="resource-name">{}</span>
             </div>"#,
-            data_source.id
+            html_escape(&data_source.id)
         ));
 
         html.push_str(
@@ -638,10 +641,10 @@ fn format_update_diff(resource: &crate::Resource) -> String {
         let mut after_lines = Vec::new();
 
         for change in &resource.changes {
-            let path = change.path.join(".");
+            let path = html_escape(&change.path.join("."));
 
             match (&change.before, &change.after) {
-                (Some(before), Some(after)) if before != after => {
+                (Some(before), Some(after)) if change.is_modified() => {
                     // Changed value
                     before_lines.push(format!(r#"<span class="line remove">    <span class="attribute">{}</span> = {}</span>"#,
                         path, format_value(before, false)));
@@ -722,6 +725,7 @@ fn format_attributes_as_diff(resource: &crate::Resource) -> String {
 
     // Parse attributes and convert arrow notation to side-by-side
     for (key, value) in &resource.attributes {
+        let key = html_escape(key);
         if let Value::String(val_str) = value {
             // Check for arrow notation (old → new)
             if val_str.contains(" → ") {
@@ -735,18 +739,18 @@ fn format_attributes_as_diff(resource: &crate::Resource) -> String {
                 }
             }
             // Check for addition prefix
-            else if val_str.starts_with("+ ") {
+            else if let Some(added) = val_str.strip_prefix("+ ") {
                 after_lines.push(format!(
                     r#"<span class="line add">    <span class="attribute">{}</span> = {}</span>"#,
                     key,
-                    format_value(&json!(&val_str[2..]), true)
+                    format_value(&json!(added), true)
                 ));
                 continue;
             }
             // Check for removal prefix
-            else if val_str.starts_with("- ") {
+            else if let Some(removed) = val_str.strip_prefix("- ") {
                 before_lines.push(format!(r#"<span class="line remove">    <span class="attribute">{}</span> = {}</span>"#,
-                    key, format_value(&json!(&val_str[2..]), true)));
+                    key, format_value(&json!(removed), true)));
                 continue;
             }
         }
@@ -813,7 +817,7 @@ fn format_single_column(resource: &crate::Resource) -> String {
     // Show changes if available
     if !resource.changes.is_empty() {
         for change in &resource.changes {
-            let path = change.path.join(".");
+            let path = html_escape(&change.path.join("."));
 
             match (&change.before, &change.after) {
                 (None, Some(after)) => {
@@ -872,7 +876,7 @@ fn format_attribute_line(key: &str, value: &Value, line_type: LineType) -> Strin
         r#"<span class="line {}"><span class="attribute">{}</span> = {}</span>
 "#,
         class,
-        key,
+        html_escape(key),
         format_value(value, true)
     )
 }
@@ -880,7 +884,7 @@ fn format_attribute_line(key: &str, value: &Value, line_type: LineType) -> Strin
 fn format_value(value: &Value, with_quotes: bool) -> String {
     match value {
         Value::String(s) => {
-            if s == "(known after apply)" {
+            if s == crate::KNOWN_AFTER_APPLY {
                 format!(r#"<span class="value">{}</span>"#, s)
             } else if with_quotes {
                 format!(r#"<span class="string-value">"{}"</span>"#, html_escape(s))
@@ -890,10 +894,10 @@ fn format_value(value: &Value, with_quotes: bool) -> String {
         }
         Value::Number(n) => format!(r#"<span class="value">{}</span>"#, n),
         Value::Bool(b) => format!(r#"<span class="value">{}</span>"#, b),
-        Value::Null => format!(r#"<span class="value">null</span>"#),
+        Value::Null => r#"<span class="value">null</span>"#.to_string(),
         Value::Array(arr) => {
             if arr.is_empty() {
-                format!(r#"<span class="value">[]</span>"#)
+                r#"<span class="value">[]</span>"#.to_string()
             } else {
                 let items: Vec<String> = arr.iter().map(|v| format_value(v, true)).collect();
                 format!(
@@ -906,13 +910,13 @@ fn format_value(value: &Value, with_quotes: bool) -> String {
         }
         Value::Object(obj) => {
             if obj.is_empty() {
-                format!(r#"<span class="value">{{}}</span>"#)
+                r#"<span class="value">{}</span>"#.to_string()
             } else {
                 let mut items = Vec::new();
                 for (k, v) in obj {
                     items.push(format!(
                         r#"    <span class="attribute">{}</span> = {}"#,
-                        k,
+                        html_escape(k),
                         format_value(v, true)
                     ));
                 }

@@ -113,10 +113,11 @@ mod file_processing_integration_tests {
     #[test]
     fn test_process_corrupted_json_fixture() {
         let content = load_malformed_fixture("corrupted_json.txt");
-        let result = parse_terraform_output(&content).unwrap();
+        let result = parse_terraform_output(&content);
 
-        // Should handle malformed JSON gracefully
-        assert!(matches!(result.mode, PlanMode::Plan));
+        // A truncated JSON plan is an error rather than an empty "no changes" plan
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("terraform show -json"), "{}", err);
     }
 
     #[test]

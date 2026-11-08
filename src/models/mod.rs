@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Placeholder for a value Terraform only knows after applying the plan.
+pub const KNOWN_AFTER_APPLY: &str = "(known after apply)";
+/// Placeholder that replaces a sensitive value in all output.
+pub const SENSITIVE_VALUE: &str = "(sensitive value)";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerraformPlan {
     pub mode: PlanMode,
@@ -64,6 +69,7 @@ pub enum ActionType {
     Create,
     Update,
     Destroy,
+    Replace,
     Read,
     NoOp,
 }
@@ -75,6 +81,14 @@ pub struct Change {
     pub after: Option<serde_json::Value>,
     pub sensitive: bool,
     pub computed: bool,
+}
+
+impl Change {
+    /// True if the value differs between before and after. Sensitive values are masked to
+    /// the same placeholder on both sides, so a sensitive change always counts as modified.
+    pub fn is_modified(&self) -> bool {
+        self.before != self.after || self.sensitive
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
